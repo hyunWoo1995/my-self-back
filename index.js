@@ -1,7 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
-const jwt = require("jsonwebtoken");
+const authJWT = require("./src/utils/jwt-util");
 const authRouter = require("./src/routes/auth");
 const userRouter = require("./src/routes/user");
 const configRouter = require("./src/routes/config");
@@ -15,11 +15,17 @@ const PORT = process.env.PORT || 8000;
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-app.post("/user", (req, res) => {
-  // body 출력
-  console.log(req.body);
-  res.send("ok!!!");
-});
+// app.use((req, res, next) => {
+//   const excludedPaths = ["/auth/login", "/auth/register"]; // 제외할 경로 리스트
+
+//   // 현재 요청 경로가 제외할 경로에 포함되는지 확인
+//   if (excludedPaths.includes(req.path)) {
+//     return next(); // 포함되면 authJWT를 적용하지 않고 다음 미들웨어로 이동
+//   }
+
+//   // 제외된 경로가 아닌 경우에만 authJWT 적용
+//   authJWT(req, res, next);
+// });
 
 // app.use(express.json());
 
@@ -28,7 +34,7 @@ app.use("/auth", authRouter);
 app.use("/config", configRouter);
 
 // 사용자 라우터 등록
-// app.use('/api/users', userRouter);
+app.use("/user", userRouter);
 
 // 기본 라우트
 app.get("/", (req, res) => {
