@@ -20,10 +20,8 @@ module.exports = (io) => {
     });
 
     // 모임 생성
-    socket.on("generateMeeting", async ({ code, name, user }) => {
-      console.log("smfksdmf", code, name, user);
-
-      const res = await meetingModel.generateMeeting();
+    socket.on("generateMeeting", async (data) => {
+      const res = await meetingModel.generateMeeting({ name: data.name, region: data.region, maxMembers: data.maxMembers });
 
       console.log("res", res);
     });

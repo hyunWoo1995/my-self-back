@@ -1,12 +1,12 @@
 const db = require("../../db");
 
 // 모임 생성
-exports.generateMeeting = async () => {
+exports.generateMeeting = async ({ name, region, maxMembers }) => {
   const [rows] = await db.query("insert meetings set name = ?, region_code = ?, created_at = ?, max_members = ?, event_date = ?, creator_id = ?", [
-    "test",
-    "A02",
+    name,
+    region,
     new Date(),
-    10,
+    maxMembers,
     new Date(2024, 12, 25),
     1,
   ]);
