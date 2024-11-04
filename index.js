@@ -1,15 +1,43 @@
 const express = require("express");
+const app = express();
+const http = require("http");
+const server = http.createServer(app);
+
 const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
 const authJWT = require("./src/utils/jwt-util");
 const authRouter = require("./src/routes/auth");
 const userRouter = require("./src/routes/user");
 const configRouter = require("./src/routes/config");
+const socketIo = require("socket.io");
+const setupSocket = require("./socket");
+const path = require("path");
 
 dotenv.config(); // .env가져오기
 
-const app = express();
+const io = socketIo(server);
 const PORT = process.env.PORT || 8000;
+const publicDirectoryPath = path.join(__dirname, "./public");
+
+app.use(express.static(publicDirectoryPath));
+
+// 클라이언트와 소켓 연결 처리
+// io.on("connection", (socket) => {
+//   console.log("A user connected:", socket.id);
+
+//   // 메시지 수신 및 전파
+//   socket.on("chat message", (msg) => {
+//     io.emit("chat message", msg); // 모든 클라이언트에 메시지 전송
+//   });
+
+//   // 클라이언트가 연결 해제 시 처리
+//   socket.on("disconnect", () => {
+//     console.log("User disconnected:", socket.id);
+//   });
+// });
+
+// 소켓 설정 초기화
+setupSocket(io);
 
 // Body Parser Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -42,6 +70,6 @@ app.get("/", (req, res) => {
 });
 
 // 서버 실행
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
