@@ -66,6 +66,8 @@ app.use("/user", userRouter);
 
 // 기본 라우트
 app.get("/", (req, res) => {
+  console.log("11111");
+
   res.send("Hello, JWT!");
 });
 
