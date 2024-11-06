@@ -16,7 +16,7 @@ const path = require("path");
 dotenv.config(); // .env가져오기
 
 const io = socketIo(server);
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 80;
 const publicDirectoryPath = path.join(__dirname, "./public");
 
 app.use(express.static(publicDirectoryPath));
