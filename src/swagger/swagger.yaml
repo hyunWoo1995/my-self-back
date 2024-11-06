@@ -1,0 +1,115 @@
+swagger: "2.0"
+info:
+  version: "0.0.1"
+  title: MoimMoim
+# during dev, should point to your local machine
+host: "localhost:8000"
+# basePath prefixes all resource paths
+basePath: /common/v1
+tags:
+  - name: user
+    description: 사용자 정보 관련
+  - name: chat
+    description: 채팅 관련
+  - name: config
+    description: 설정 관련
+#
+schemes:
+  # tip: remove http to make production-grade
+  - http
+  - https
+# format of bodies a client can send (Content-Type)
+consumes:
+  - application/json
+  - application/octet-stream
+# format of the responses to the client (Accepts)
+produces:
+  - application/json
+securityDefinitions:
+  Bearer:
+    type: apiKey
+    name: authorization
+    in: header
+    description: "/auth에서 로그인 후 토큰입력 : Bearer|[token]"
+paths:
+  /user:
+    x-swagger-router-controller: moim
+    get:
+      security:
+        - Bearer: []
+      tags:
+        - user
+      operationId: getUserList
+      summary: 회원목록조회
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Success
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/UserInfo"
+        500:
+          description: Server Error
+    post:
+      security:
+        - Bearer: []
+      tags:
+        - user
+      operationId: addUserInfo
+      summary: 신규회원 추가
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          description: "신규유저정보"
+          schema:
+            $ref: "#/definitions/UserInput"
+      responses:
+        200:
+          description: Success
+        500:
+          description: Server Error
+
+definitions:
+  UserInput:
+    type: object
+    required:
+      - userid
+      - name
+      - business_type
+    properties:
+      userid:
+        type: string
+        example: "moim"
+      passwd:
+        type: [string, "null"]
+        example: "password"
+      name:
+        type: string
+        example: "이현우"
+      business_type:
+        type: string
+        example: "hannong"
+      business_update:
+        type: [boolean, "null"]
+        example: true
+
+  UserInfo:
+    type: object
+    properties:
+      id:
+        type: integer
+        example: 1
+      userid:
+        type: string
+        example: "moim"
+      name:
+        type: string
+        example: "이현우"
+##
+# end of contents
+##

@@ -2,7 +2,8 @@ const express = require("express");
 const app = express();
 const http = require("http");
 const server = http.createServer(app);
-
+const swaggerNodeRunner = require("swagger-node-runner");
+const SwaggerUi = require("swagger-ui-express");
 const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
 const authJWT = require("./src/utils/jwt-util");
@@ -54,5 +55,37 @@ app.get("/", (req, res) => {
   res.send("Hello, JWT!");
 });
 
+const config = {
+  appRoot: __dirname,
+  swagger: "src/swagger/swagger.yaml",
+};
+
+swaggerNodeRunner.create(config, function (err, swaggerRunner) {
+  if (err) throw err;
+
+  app.use("/docs", SwaggerUi.serve, SwaggerUi.setup(require("yamljs").load(config.swagger)));
+
+  const swaggerExpress = swaggerRunner.expressMiddleware();
+  swaggerExpress.register(app);
+
+  app.use(express.static("public"));
+
+  app.use("/a", function (req, res, next) {
+    const value = "'sdfasdfasdfasasdf'";
+    res.send(
+      `<head><title>MoimMoim</title><link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor-viewer.min.css" /></head><body><script src="https://uicdn.toast.com/editor/latest/toastui-editor-viewer.js"></script><div id="viewer"/><script>new toastui.Editor({el: document.querySelector("#viewer"),initialValue: ${value}});</script></body>`
+    );
+  });
+
+  // let port = 8085;
+  // if (swaggerExpress.runner.swagger.host.split(":")[1] !== undefined) {
+  //   port = swaggerExpress.runner.swagger.host.split(":")[1];
+  // }
+
+  server.listen(80, function () {
+    console.log(`api listening on http://${swaggerExpress.runner.swagger.host}/docs`);
+  });
+});
+
 // 서버 실행
-server.listen(PORT, () => {});
+// server.listen(PORT, () => {});
