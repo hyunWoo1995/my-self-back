@@ -16,25 +16,10 @@ const path = require("path");
 dotenv.config(); // .env가져오기
 
 const io = socketIo(server);
-const PORT = process.env.PORT || 80;
+const PORT = process.env.PORT || 8000;
 const publicDirectoryPath = path.join(__dirname, "./public");
 
 app.use(express.static(publicDirectoryPath));
-
-// 클라이언트와 소켓 연결 처리
-// io.on("connection", (socket) => {
-//   console.log("A user connected:", socket.id);
-
-//   // 메시지 수신 및 전파
-//   socket.on("chat message", (msg) => {
-//     io.emit("chat message", msg); // 모든 클라이언트에 메시지 전송
-//   });
-
-//   // 클라이언트가 연결 해제 시 처리
-//   socket.on("disconnect", () => {
-//     console.log("User disconnected:", socket.id);
-//   });
-// });
 
 // 소켓 설정 초기화
 setupSocket(io);
@@ -66,12 +51,8 @@ app.use("/user", userRouter);
 
 // 기본 라우트
 app.get("/", (req, res) => {
-  console.log("11111");
-
   res.send("Hello, JWT!");
 });
 
 // 서버 실행
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+server.listen(PORT, () => {});

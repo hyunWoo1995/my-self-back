@@ -14,9 +14,7 @@ const pool = mysql.createConnection({
 
 pool.connect((err) => {
   if (err) {
-    console.error("데이터베이스 연결 오류:", err);
   } else {
-    console.log("MySQL 데이터베이스에 성공적으로 연결되었습니다.");
   }
 });
 
