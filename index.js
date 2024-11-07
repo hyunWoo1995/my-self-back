@@ -6,13 +6,14 @@ const swaggerNodeRunner = require("swagger-node-runner");
 const SwaggerUi = require("swagger-ui-express");
 const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
-const authJWT = require("./src/utils/jwt-util");
+const authJWT = require("./src/middlewares/authJwt");
 const authRouter = require("./src/routes/auth");
 const userRouter = require("./src/routes/user");
 const configRouter = require("./src/routes/config");
 const socketIo = require("socket.io");
 const setupSocket = require("./socket");
 const path = require("path");
+const axios = require("axios");
 
 dotenv.config(); // .env가져오기
 
@@ -41,7 +42,7 @@ app.use(bodyParser.json());
 //   authJWT(req, res, next);
 // });
 
-// app.use(express.json());
+app.use(express.json());
 
 // 사용자 인증 라우터 등록
 app.use("/auth", authRouter);
@@ -63,7 +64,11 @@ const config = {
 swaggerNodeRunner.create(config, function (err, swaggerRunner) {
   if (err) throw err;
 
-  app.use("/docs", SwaggerUi.serve, SwaggerUi.setup(require("yamljs").load(config.swagger)));
+  app.use(
+    "/docs",
+    SwaggerUi.serve,
+    SwaggerUi.setup(require("yamljs").load(config.swagger))
+  );
 
   const swaggerExpress = swaggerRunner.expressMiddleware();
   swaggerExpress.register(app);
@@ -83,9 +88,64 @@ swaggerNodeRunner.create(config, function (err, swaggerRunner) {
   // }
 
   server.listen(80, function () {
-    console.log(`api listening on http://${swaggerExpress.runner.swagger.host}/docs`);
+    console.log(
+      `api listening on http://${swaggerExpress.runner.swagger.host}/docs`
+    );
   });
 });
 
 // 서버 실행
 // server.listen(PORT, () => {});
+///////////////////////////////////////////////
+// 인가 코드 요청 경로
+// app.get("/auth/kakao", (req, res) => {
+//   console.log(111);
+//   const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=${process.env.KAKAO_CLIENT_REST_ID}&redirect_uri=${process.env.KAKAO_REDIRECT_URI}`;
+//   res.redirect(kakaoAuthUrl);
+// });
+
+// app.get("/oauth/return", async (req, res) => {
+//   console.log(222);
+//   const code = req.query.code; // 쿼리 파라미터에서 인가 코드 추출
+//   console.log("code", code);
+
+//   try {
+//     // 인가 코드를 사용하여 액세스 토큰 요청
+//     const tokenResponse = await axios.post(
+//       "https://kauth.kakao.com/oauth/token",
+//       null,
+//       {
+//         params: {
+//           grant_type: "authorization_code",
+//           client_id: process.env.KAKAO_CLIENT_REST_ID,
+//           redirect_uri: process.env.KAKAO_REDIRECT_URI,
+//           code: code,
+//           client_secret: process.env.KAKAO_CLIENT_SECRET, // 선택 사항
+//         },
+//         headers: {
+//           "Content-type": "application/x-www-form-urlencoded",
+//         },
+//       }
+//     );
+
+//     const accessToken = tokenResponse.data.access_token;
+//     console.log("accessToken", accessToken);
+//     const userResponse = await axios.get("https://kapi.kakao.com/v2/user/me", {
+//       headers: {
+//         Authorization: `Bearer ${accessToken}`,
+//       },
+//     });
+//     const userData = userResponse.data;
+//     console.log("userData", userData);
+
+//     const user = {
+//       kakaoId: userData.id,
+//       email: userData.kakao_account.email,
+//       nickname: userData.properties.nickname,
+//     };
+//     res.redirect(`${process.env.FRONTEND_URL}/login?nickname=${user.nickname}`);
+//   } catch (error) {
+//     console.error("토큰 발급 오류:", error);
+//     res.status(500).json({ message: "토큰 발급 실패" });
+//   }
+// });

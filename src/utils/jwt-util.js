@@ -10,7 +10,7 @@ const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;
 
 const algorithmType = "HS256";
 const accessTokenTime = "1h";
-const refreshTokenTime = "24d";
+const refreshTokenTime = "7d";
 module.exports = {
   sign: (user) => {
     const payload = {
