@@ -6,7 +6,7 @@ const axios = require("axios");
 
 const getAuthUrl = (provider) => {
   const redirectUri = process.env[`${provider.toUpperCase()}_REDIRECT_URI`]; // 각 서비스별 리다이렉트 URI
-  const clientId = process.env[`${provider.toUpperCase()}_CLIENT_REST_ID`]; // 각 서비스별 클라이언트 ID
+  const clientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`]; // 각 서비스별 클라이언트 ID
 
   let authUrl = "";
 
@@ -28,10 +28,34 @@ const getAuthUrl = (provider) => {
   return authUrl;
 };
 
+const getProviderConfig = (provider) => {
+  const config = {
+    kakao: {
+      client_id: process.env.KAKAO_CLIENT_ID,
+      client_secret: process.env.KAKAO_CLIENT_SECRET,
+      token_url: "https://kauth.kakao.com/oauth/token",
+      user_info_url: "https://kapi.kakao.com/v2/user/me",
+    },
+    google: {
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      token_url: "https://oauth2.googleapis.com/token",
+      user_info_url: "https://www.googleapis.com/oauth2/v2/userinfo",
+    },
+    // apple: {
+    //   client_id: process.env.APPLE_CLIENT_ID,
+    //   client_secret: process.env.APPLE_CLIENT_SECRET,
+    //   token_url: "https://appleid.apple.com/auth/token",
+    //   user_info_url: "https://appleid.apple.com/auth/userinfo",
+    // },
+  };
+  return config[provider];
+};
+
 const authController = {
   //회원 가입
   async register(req, res) {
-    const { email, name, password, nickname } = req.body;
+    const { email, password, nickname } = req.body;
     try {
       // 이메일 중복 확인
       const existingUser = await userModel.findByEmail(email);
@@ -41,12 +65,11 @@ const authController = {
       // 비밀번호 해시 처리
       const hashedPassword = await bcrypt.hash(password, 10);
       // 새로운 사용자 생성
-      const userId = await userModel.createUser(
-        name,
+      const userId = await userModel.createUser({
         email,
         hashedPassword,
-        nickname
-      );
+        nickname,
+      });
       res.status(201).json({ message: "회원가입 완료", userId });
     } catch (error) {
       console.error("Error:", error);
@@ -119,31 +142,12 @@ const authController = {
 
   // 소셜로그인 팝업후 리다이렉트 url
   async socialLogin(req, res) {
+    const ip = req.ip || req.connection.remoteAddress;
     const { code } = req.query;
     const provider = req.params.provider; // 'kakao', 'google', 'apple' 등 서비스 이름을 URL에서 받음
     try {
       // 각 서비스별 클라이언트 ID, 비밀, 토큰 URL 등 매핑 설정
-      const providerConfig = {
-        kakao: {
-          client_id: process.env.KAKAO_CLIENT_REST_ID,
-          client_secret: process.env.KAKAO_CLIENT_SECRET,
-          token_url: "https://kauth.kakao.com/oauth/token",
-          user_info_url: "https://kapi.kakao.com/v2/user/me",
-        },
-        // google: {
-        //   client_id: process.env.GOOGLE_CLIENT_ID,
-        //   client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        //   token_url: "https://oauth2.googleapis.com/token",
-        //   user_info_url: "https://www.googleapis.com/oauth2/v2/userinfo",
-        // },
-        // apple: {
-        //   client_id: process.env.APPLE_CLIENT_ID,
-        //   client_secret: process.env.APPLE_CLIENT_SECRET,
-        //   token_url: "https://appleid.apple.com/auth/token",
-        //   user_info_url: "https://appleid.apple.com/auth/userinfo",
-        // },
-      };
-      const config = providerConfig[provider];
+      const config = getProviderConfig(provider);
       if (!config) {
         return res.status(400).send({
           ok: false,
@@ -152,7 +156,6 @@ const authController = {
       }
 
       // 1. 인가 코드로 액세스 토큰 요청
-      console.log("################");
       const params = {
         grant_type: "authorization_code",
         client_id: config.client_id,
@@ -160,39 +163,38 @@ const authController = {
         redirect_uri: process.env[`${provider.toUpperCase()}_REDIRECT_URI`],
         code: code,
       };
-      console.log("params", params);
       const tokenResponse = await axios.post(config.token_url, null, {
         params,
         headers: { "Content-type": "application/x-www-form-urlencoded" },
       });
       const accessToken = tokenResponse.data.access_token;
-      console.log("accessToken", accessToken);
 
       // 2. 액세스 토큰으로 사용자 정보 요청
       const userResponse = await axios.get(config.user_info_url, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-
       const userData = userResponse.data;
-      console.log("userData", userData);
       const email =
         userData.email || `${provider}_${userData.id}@${provider}.com`; // 이메일이 없으면 고유 ID로 설정
-      console.log("email", email);
       let user = await userModel.findByEmail(email);
-      console.log("user", user);
 
       // 3. 기존 사용자가 없으면 회원가입 처리
       if (!user) {
         const params = {
           email,
           hashedPassword: null,
-          [`${provider}Id`]: userData.id,
-          nickname: userData.name || userData.nickname || "사용자",
+          provider,
+          provider_id: userData.id,
+          ip,
         };
-        user = await userModel.createUser(params);
+        if (provider === "google") {
+          params.nickname = userData.name;
+        } else {
+          params.nickname = userData?.properties?.nickname || "사용자";
+        }
+        const insertId = await userModel.createUser(params);
+        user = await userModel.findByUser(insertId);
       }
-
-      // 4. JWT 토큰 발급 및 Redis에 저장
       const newAccessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
         expiresIn: "1h",
       });
@@ -202,10 +204,16 @@ const authController = {
         { expiresIn: "7d" }
       );
       redisClient.set(String(user.id), newRefreshToken);
-      res.status(200).send({
-        ok: true,
-        data: { accessToken: newAccessToken, refreshToken: newRefreshToken },
+
+      res.cookie("accessToken", newAccessToken, {
+        httpOnly: true,
+        maxAge: 60 * 60 * 1000, // 60분 jwt-util.js에 설정값이랑 맞춰야됨...변수 같이쓸수있으면 같이쓰는걸로.
       });
+      res.cookie("refreshToken", newRefreshToken, {
+        httpOnly: true,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+      });
+      res.redirect(`${process.env.FRONTEND_URL}?email=${user.email}`);
     } catch (error) {
       console.error(`${provider} 로그인 에러:`, error);
       res.status(500).send({
