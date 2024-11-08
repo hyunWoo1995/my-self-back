@@ -63,7 +63,7 @@ exports.sendMessage = async (data) => {
 
 // 미팅 데이터 조회
 exports.getMeetingData = async (data) => {
-  const [rows] = await db.query("select m.*, u.name as creator_name from meetings m join users u on m.creator_id = u.id where m.id = ?", data.meetings_id);
+  const [rows] = await db.query("select m.*, u.nickname as creator_name from meetings m join users u on m.creator_id = u.id where m.id = ?", data.meetings_id);
 
   return rows[0];
 };
