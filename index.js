@@ -24,7 +24,7 @@ const publicDirectoryPath = path.join(__dirname, "./public");
 app.use(express.static(publicDirectoryPath));
 
 // 소켓 설정 초기화
-// setupSocket(io);
+setupSocket(io);
 
 // Body Parser Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -64,11 +64,7 @@ const config = {
 swaggerNodeRunner.create(config, function (err, swaggerRunner) {
   if (err) throw err;
 
-  app.use(
-    "/docs",
-    SwaggerUi.serve,
-    SwaggerUi.setup(require("yamljs").load(config.swagger))
-  );
+  app.use("/docs", SwaggerUi.serve, SwaggerUi.setup(require("yamljs").load(config.swagger)));
 
   const swaggerExpress = swaggerRunner.expressMiddleware();
   swaggerExpress.register(app);
@@ -88,8 +84,6 @@ swaggerNodeRunner.create(config, function (err, swaggerRunner) {
   // }
 
   server.listen(80, function () {
-    console.log(
-      `api listening on http://${swaggerExpress.runner.swagger.host}/docs`
-    );
+    console.log(`api listening on http://${swaggerExpress.runner.swagger.host}/docs`);
   });
 });
