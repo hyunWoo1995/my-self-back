@@ -6,6 +6,9 @@ const router = express.Router();
 router.post("/register", authController.register);
 // 로그인
 router.post("/login", authController.login);
+
+router.get("/requestEmail", authController.requestEmail);
+router.get("/confirmEmail", authController.confirmEmail);
 // 소셜 로그인
 router.get("/:provider", authController.socialUrl);
 router.get("/:provider/callback", authController.socialLogin);

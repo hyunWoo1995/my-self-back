@@ -30,17 +30,25 @@ app.use(express.static(publicDirectoryPath));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// app.use((req, res, next) => {
-//   const excludedPaths = ["/auth/login", "/auth/register"]; // 제외할 경로 리스트
+// 토큰 체크하기!
+app.use((req, res, next) => {
+  // 제외할 경로 리스트
+  const excludedPaths = [];
+  const excludedPrefixes = ["/auth"]; // auth로 시작하는 경로 전체
+  console.log("req.path", req.path);
 
-//   // 현재 요청 경로가 제외할 경로에 포함되는지 확인
-//   if (excludedPaths.includes(req.path)) {
-//     return next(); // 포함되면 authJWT를 적용하지 않고 다음 미들웨어로 이동
-//   }
+  const isExcludedPath = excludedPaths.includes(req.path);
+  const isExcludedPrefix = excludedPrefixes.some((prefix) =>
+    req.path.startsWith(prefix)
+  );
 
-//   // 제외된 경로가 아닌 경우에만 authJWT 적용
-//   authJWT(req, res, next);
-// });
+  // 현재 요청 경로가 제외할 경로에 포함되는지 확인
+  if (isExcludedPath || isExcludedPrefix) {
+    return next(); // 포함되면 authJWT를 적용하지 않고 다음 미들웨어로 이동
+  }
+  // 제외된 경로가 아닌 경우에만 authJWT 적용
+  authJWT(req, res, next);
+});
 
 app.use(express.json());
 
