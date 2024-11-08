@@ -144,6 +144,8 @@ module.exports = async (io) => {
     });
 
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)
-    socket.on("disconnect", () => {});
+    socket.on("disconnect", () => {
+      console.log("disconnect", socket.id);
+    });
   });
 };
