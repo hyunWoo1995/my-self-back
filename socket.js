@@ -40,20 +40,22 @@ module.exports = async (io) => {
     socket.emit("message", socket.id);
 
     // 지역 입장 (Join region)
-    socket.on("join", async ({ user, code }) => {
-      socket.join(code);
+    socket.on("join", async ({ user, region_code }) => {
+      socket.join(region_code);
 
       // Check Redis cache for meeting list
-      pubClient.get(`meetingList:${code}`, async (err, result) => {
+      pubClient.get(`meetingList:${region_code}`, async (err, result) => {
         if (result) {
           console.log("레디스!");
-          io.to(code).emit("list", JSON.parse(result));
+          console.log("result!!", result);
+          io.to(region_code).emit("list", JSON.parse(result));
         } else {
           console.log("데이터베이스!");
 
-          const res = await meetingModel.getMeetingList({ region_code: code });
-          pubClient.setEx(`meetingList:${code}`, 3600, JSON.stringify(res)); // Cache for 1 hour
-          io.to(code).emit("list", res);
+          const res = await meetingModel.getMeetingList({ region_code: region_code });
+          pubClient.setEx(`meetingList:${region_code}`, 3600, JSON.stringify(res)); // Cache for 1 hour
+
+          io.to(region_code).emit("list", res);
         }
       });
 
