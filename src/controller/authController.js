@@ -3,6 +3,9 @@ const bcrypt = require("bcryptjs");
 const redisClient = require("../utils/redis");
 const userModel = require("../model/userModel");
 const axios = require("axios");
+const mailSand = require("../utils/nodemailer");
+const dotenv = require("dotenv");
+dotenv.config(); // .env가져오기
 
 const getAuthUrl = (provider) => {
   const redirectUri = process.env[`${provider.toUpperCase()}_REDIRECT_URI`]; // 각 서비스별 리다이렉트 URI
@@ -52,7 +55,80 @@ const getProviderConfig = (provider) => {
   return config[provider];
 };
 
+const setCookie = (res, user) => {
+  // access token과 refresh token을 발급.
+  const accessToken = jwt.sign(user);
+  const refreshToken = jwt.refresh();
+  // redis에 access,refresh token두개다 등록.
+  redisClient.set(
+    `accessToken:${user.id}`,
+    accessToken,
+    "EX",
+    parseInt(process.env.ACCESS_TOKEN_TIMER)
+  );
+  redisClient.set(
+    `refreshToken:${user.id}`,
+    refreshToken,
+    "EX",
+    parseInt(process.env.REFRESH_TOKEN_TIMER)
+  );
+  // 브라우저cookie에다 넣어줌.
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    maxAge: parseInt(process.env.ACCESS_TOKEN_TIMER) * 1000, // 60분
+  });
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    maxAge: parseInt(process.env.REFRESH_TOKEN_TIMER) * 1000, // 7일
+  });
+};
+// 이메일 인증 코드 가져오기
+const getEmailAuthCode = async (email) => {
+  return new Promise((resolve, reject) => {
+    redisClient.get(`emailAuthCode:${email}`, (err, result) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(result); // result에는 이메일 인증 코드가 들어있습니다
+    });
+  });
+};
+
 const authController = {
+  async requestEmail(req, res) {
+    const { email } = req.body;
+    try {
+      const authCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      redisClient.set(`emailAuthCode:${email}`, authCode, "EX", 60 * 3);
+
+      const mailOptions = {
+        to: email, // 받는 사람
+        subject: "moimmoim 인증번호 입니다.", // 메일 제목
+        html: `<h1>안녕하세요</h1><p>moimmoim인증번호는 :${authCode} 입니다</p>`, // HTML 형식으로 작성 가능
+      };
+      const emailInfo = await mailSand(mailOptions);
+      res.send(`Email sent successfully! Response: ${emailInfo}`);
+    } catch (error) {
+      console.log("error", error);
+      res.status(500).json({ message: "서버 에러가 발생했습니다." });
+    }
+  },
+  async confirmEmail(req, res) {
+    const { email, code } = req.body;
+    try {
+      const storedCode = await getEmailAuthCode(email);
+      if (storedCode === code) {
+        // 인증 성공
+        await redisClient.del(`emailAuthCode:${email}`); // 인증 후 코드를 삭제
+        res.status(201).json({ ok: true, message: "인증성공" });
+      } else {
+        res.status(201).json({ ok: false, message: "인증실패" });
+      }
+    } catch (error) {
+      res.status(500).json({ ok: false, message: "서버 에러가 발생했습니다." });
+    }
+  },
   //회원 가입
   async register(req, res) {
     const { email, password, nickname } = req.body;
@@ -72,10 +148,10 @@ const authController = {
       });
       res.status(201).json({ message: "회원가입 완료", userId });
     } catch (error) {
-      console.error("Error:", error);
       res.status(500).json({ message: "서버 에러가 발생했습니다." });
     }
   },
+  // moimmoim 회원로그인
   async login(req, res) {
     const { email, password } = req.body;
     try {
@@ -95,33 +171,9 @@ const authController = {
           message: "계정 정보가 틀렸습니다. 확인바랍니다.",
         });
       }
-      // access token과 refresh token을 발급합니다.
-      const accessToken = jwt.sign(user);
-      const refreshToken = jwt.refresh();
-      // 발급한 refresh token을 redis에 key를 user의 id로 하여 저장합니다.
-      redisClient.set(toString(user.id), refreshToken);
-
-      // redisClient.get(toString(user.id), (err, value) => {
-      //   console.log("value", value); // 123
-      // });
-      res.cookie("accessToken", accessToken, {
-        httpOnly: true,
-        maxAge: 60 * 60 * 1000, // 60분 jwt-util.js에 설정값이랑 맞춰야됨...변수 같이쓸수있으면 같이쓰는걸로.
-      });
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
-      });
-      // res.status(200).json({ message: "로그인 되었습니다." });
-      res.status(200).send({
-        ok: true,
-        data: {
-          accessToken,
-          refreshToken,
-        },
-      });
+      setCookie(res, user);
+      res.status(200).json({ message: "로그인 되었습니다." });
     } catch (error) {
-      console.error("로그인 중 에러 발생:", error);
       res.status(500).send({
         ok: false,
         message: "서버 에러가 발생했습니다.",
@@ -195,27 +247,10 @@ const authController = {
         const insertId = await userModel.createUser(params);
         user = await userModel.findByUser(insertId);
       }
-      const newAccessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-        expiresIn: "1h",
-      });
-      const newRefreshToken = jwt.sign(
-        { id: user.id },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" }
-      );
-      redisClient.set(String(user.id), newRefreshToken);
+      setCookie(res, user);
 
-      res.cookie("accessToken", newAccessToken, {
-        httpOnly: true,
-        maxAge: 60 * 60 * 1000, // 60분 jwt-util.js에 설정값이랑 맞춰야됨...변수 같이쓸수있으면 같이쓰는걸로.
-      });
-      res.cookie("refreshToken", newRefreshToken, {
-        httpOnly: true,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
-      });
-      res.redirect(`${process.env.FRONTEND_URL}?email=${user.email}`);
+      res.redirect(`${process.env.FRONTEND_URL}/sign?email=${user.email}`);
     } catch (error) {
-      console.error(`${provider} 로그인 에러:`, error);
       res.status(500).send({
         ok: false,
         message: `${provider} 로그인 중 서버 에러가 발생했습니다.`,
