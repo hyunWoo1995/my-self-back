@@ -47,7 +47,6 @@ module.exports = async (io) => {
       pubClient.get(`meetingList:${region_code}`, async (err, result) => {
         if (result) {
           console.log("레디스!");
-          console.log("result!!", result);
           io.to(region_code).emit("list", JSON.parse(result));
         } else {
           console.log("데이터베이스!");
@@ -77,6 +76,7 @@ module.exports = async (io) => {
         await meetingModel.enterMeeting({
           users_id: data.users_id,
           meetings_id: res.insertId,
+          creator: true,
         });
 
         const updatedMeetingList = await meetingModel.getMeetingList({
@@ -85,27 +85,33 @@ module.exports = async (io) => {
 
         pubClient.setEx(`meetingList:${data.region_code}`, 3600, JSON.stringify(updatedMeetingList));
 
+        io.to(data.region_code).emit("list", updatedMeetingList);
         // pubClient.publish(data.region_code, JSON.stringify({ type: "listUpdate", data: updatedMeetingList }));
       }
     });
 
     // 모임 입장 (Enter a meeting)
     socket.on("enterMeeting", async (data) => {
-      const meetingRoom = `${data.region_code}-${data.meetings_id}`;
-      socket.join(meetingRoom);
-
       const enterRes = await meetingModel.enterMeeting({
         users_id: data.users_id,
         meetings_id: data.meetings_id,
       });
 
-      if (enterRes && enterRes.affectedRows > 0) {
+
+      if (enterRes.CODE !== "EM000") {
+        return io.to(data.region_code).emit("enterRes", enterRes);
+      }
+
+      const meetingRoom = `${data.region_code}-${data.meetings_id}`;
+
+      socket.join(meetingRoom);
+
+      if (enterRes && enterRes.CODE === "EM000") {
         const lists = await meetingModel.getMeetingList({ region_code: data.region_code });
         pubClient.setEx(`meetingList:${data.region_code}`, 3600, JSON.stringify(lists));
         io.to(data.region_code).emit("list", lists);
       }
 
-      // Check Redis cache for meeting list
       pubClient.get(`messages:${data.region_code}:${data.meetings_id}`, async (err, result) => {
         if (result) {
           console.log("레디스!");
