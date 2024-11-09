@@ -2,6 +2,7 @@ const jwt = require("../utils/jwt-util");
 const bcrypt = require("bcryptjs");
 const redisClient = require("../utils/redis");
 const userModel = require("../model/userModel");
+const interestModel = require("../model/interestModel");
 const axios = require("axios");
 const mailSand = require("../utils/nodemailer");
 const dotenv = require("dotenv");
@@ -331,6 +332,15 @@ const authController = {
         ok: false,
         message: `${provider} 로그인 중 서버 에러가 발생했습니다.`,
       });
+    }
+  },
+
+  async getInterests(req, res) {
+    try {
+      const interestList = await interestModel.getInterestList();
+      res.status(201).json({ ok: true, message: "성공", data: interestList });
+    } catch (error) {
+      res.status(400).send({ ok: false, message: error.message });
     }
   },
 };
