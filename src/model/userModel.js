@@ -7,15 +7,39 @@ const User = {
     const email = params.email;
     const password = params.hashedPassword || null;
     const nickname = params.nickname || null;
+    const birthdate = params.birthdate || null;
+    const gender = params.gender || null;
     const provider = params.provider || null;
     const provider_id = params.provider_id || null;
     const ip = params.ip || null;
     const [result] = await db.query(
-      `INSERT INTO users (email, password, nickname, provider, provider_id, ip) 
-      VALUES (?, ?, ?, ?, ?, ?)`,
-      [email, password, nickname, provider, provider_id, ip]
+      `INSERT INTO users (email, password, nickname, birthdate, gender, provider, provider_id, ip) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [email, password, nickname, birthdate, gender, provider, provider_id, ip]
     );
-    console.log("result", result);
+    return result.insertId;
+  },
+  async createUserInterest(params) {
+    const user_id = params.user_id;
+    const interest_id = params.interest_id;
+
+    const [result] = await db.query(
+      `INSERT INTO user_interests (user_id, interest_id) 
+      VALUES (?, ?)`,
+      [user_id, interest_id]
+    );
+    return result.insertId;
+  },
+  async createUserAddresses(params) {
+    const user_id = params.user_id;
+    const address = params.address;
+    const address_code = params.address_code;
+
+    const [result] = await db.query(
+      `INSERT INTO user_addresses (user_id, address, address_code) 
+      VALUES (?, ?, ?)`,
+      [user_id, address, address_code]
+    );
     return result.insertId;
   },
 

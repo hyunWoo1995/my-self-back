@@ -13,4 +13,6 @@ router.get("/confirmEmail", authController.confirmEmail);
 router.get("/:provider", authController.socialUrl);
 router.get("/:provider/callback", authController.socialLogin);
 
+// router.get("/interests", authController.login);
+
 module.exports = router;
