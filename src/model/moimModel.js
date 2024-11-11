@@ -115,11 +115,11 @@ exports.getCategories = async () => {
 };
 
 // 마지막 읽은 메세지 수정
-exports.updateRead = async (data) => {
-  console.log("data", data);
+// exports.updateRead = async (data) => {
+//   console.log("data", data);
 
-  const [rows] = await db.query("update meetings_users set last_read_message = ? where meetings_id = ? and users_id = ? ", [data.id, data.meetings_id, data.users_id]);
-};
+//   const [rows] = await db.query("update meetings_users set last_read_message = ? where meetings_id = ? and users_id = ? ", [data.id, data.meetings_id, data.users_id]);
+// };
 
 // 마지막 읽은 메세지 조회
 exports.lastRead = async ({ meetings_id, users_id }) => {

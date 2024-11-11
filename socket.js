@@ -126,7 +126,7 @@ module.exports = async (io) => {
             console.log("last_meesage_index", last_meesage_index);
             console.log("레디스!");
             io.to(meetingRoom).emit("messages", { list: JSON.parse(result), readId: last_message_id });
-            await meetingModel.updateRead({ id: JSON.parse(result).pop().id, meetings_id: data.meetings_id, users_id: data.users_id });
+            // await meetingModel.updateRead({ id: JSON.parse(result).pop().id, meetings_id: data.meetings_id, users_id: data.users_id });
           } else {
             console.log("데이터베이스!");
             const messages = await meetingModel.getMessages(data.meetings_id);
@@ -136,7 +136,7 @@ module.exports = async (io) => {
             io.to(meetingRoom).emit("messages", { list: messages, readId: last_message_id });
 
             if (messages.length > 0) {
-              await meetingModel.updateRead({ id: messages.pop().id, meetings_id: data.meetings_id, users_id: data.users_id });
+              // await meetingModel.updateRead({ id: messages.pop().id, meetings_id: data.meetings_id, users_id: data.users_id });
             }
             pubClient.setEx(`messages:${data.region_code}:${data.meetings_id}`, 3600, JSON.stringify(messages)); // Cache for 1 hour
           }
@@ -160,7 +160,7 @@ module.exports = async (io) => {
 
       if (res.affectedRows > 0) {
         const message = await meetingModel.getMessage(data.meetings_id, res.insertId);
-        await meetingModel.updateRead({ id: res.insertId, meetings_id: data.meetings_id, users_id: data.users_id });
+        // await meetingModel.updateRead({ id: res.insertId, meetings_id: data.meetings_id, users_id: data.users_id });
 
         io.to(meetingRoom).emit("receiveMessage", message);
         const messages = await meetingModel.getMessages(data.meetings_id);
@@ -171,9 +171,9 @@ module.exports = async (io) => {
       }
     });
 
-    socket.on("readMessage", async (data) => {
-      await meetingModel.updateRead(data);
-    });
+    // socket.on("readMessage", async (data) => {
+    //   await meetingModel.updateRead(data);
+    // });
 
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)
     socket.on("disconnect", () => {
