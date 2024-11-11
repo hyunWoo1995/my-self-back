@@ -1,5 +1,5 @@
 const { createClient } = require("redis");
-const meetingModel = require("./src/model/meetingModel");
+const meetingModel = require("./src/model/moimModel");
 const { createAdapter } = require("@socket.io/redis-adapter");
 
 // socket.js
@@ -69,6 +69,9 @@ module.exports = async (io) => {
         maxMembers: data.maxMembers,
         users_id: data.users_id,
         description: data.description,
+        type: data.type,
+        category1: data.category1,
+        category2: data.category2,
       });
 
       if (res.affectedRows > 0) {
@@ -95,8 +98,8 @@ module.exports = async (io) => {
       const enterRes = await meetingModel.enterMeeting({
         users_id: data.users_id,
         meetings_id: data.meetings_id,
+        pubClient,
       });
-
 
       if (enterRes.CODE !== "EM000") {
         return io.to(data.region_code).emit("enterRes", enterRes);
@@ -113,15 +116,27 @@ module.exports = async (io) => {
       }
 
       pubClient.get(`messages:${data.region_code}:${data.meetings_id}`, async (err, result) => {
+        console.log("eee", err);
         if (result) {
+          const last_message_id = await meetingModel.lastRead({ meetings_id: data.meetings_id, users_id: data.users_id });
+          console.log("last_message_id", last_message_id);
+
+          const last_meesage_index = JSON.parse(result).findIndex((v) => v.id === last_message_id);
+          console.log("last_meesage_index", last_meesage_index);
           console.log("레디스!");
-          io.to(meetingRoom).emit("messages", JSON.parse(result));
+          io.to(meetingRoom).emit("messages", { list: JSON.parse(result), readId: last_message_id });
+          await meetingModel.updateRead({ id: JSON.parse(result).pop().id, meetings_id: data.meetings_id, users_id: data.users_id });
         } else {
           console.log("데이터베이스!");
-
           const messages = await meetingModel.getMessages(data.meetings_id);
-          io.to(meetingRoom).emit("messages", messages);
+          const last_message_id = await meetingModel.lastRead({ meetings_id: data.meetings_id, users_id: data.users_id });
 
+          const last_meesage_index = messages.findIndex((v) => v.id === last_message_id);
+          io.to(meetingRoom).emit("messages", { list: messages, readId: last_message_id });
+
+          if (messages.length > 0) {
+            await meetingModel.updateRead({ id: messages.pop().id, meetings_id: data.meetings_id, users_id: data.users_id });
+          }
           pubClient.setEx(`messages:${data.region_code}:${data.meetings_id}`, 3600, JSON.stringify(messages)); // Cache for 1 hour
         }
       });
@@ -141,6 +156,7 @@ module.exports = async (io) => {
 
       if (res.affectedRows > 0) {
         const message = await meetingModel.getMessage(data.meetings_id, res.insertId);
+        await meetingModel.updateRead({ id: res.insertId, meetings_id: data.meetings_id, users_id: data.users_id });
 
         io.to(meetingRoom).emit("receiveMessage", message);
         const messages = await meetingModel.getMessages(data.meetings_id);
@@ -149,6 +165,10 @@ module.exports = async (io) => {
 
         // pubClient.publish(meetingRoom, JSON.stringify({ type: "newMessage", data: message }));
       }
+    });
+
+    socket.on("readMessage", async (data) => {
+      await meetingModel.updateRead(data);
     });
 
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)

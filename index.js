@@ -9,6 +9,7 @@ const bodyParser = require("body-parser");
 const authJWT = require("./src/middlewares/authJwt");
 const authRouter = require("./src/routes/auth");
 const userRouter = require("./src/routes/user");
+const moimRouter = require("./src/routes/moim");
 const configRouter = require("./src/routes/config");
 const socketIo = require("socket.io");
 const setupSocket = require("./socket");
@@ -34,13 +35,11 @@ app.use(bodyParser.json());
 app.use((req, res, next) => {
   // 제외할 경로 리스트
   const excludedPaths = [];
-  const excludedPrefixes = ["/auth"]; // auth로 시작하는 경로 전체
+  const excludedPrefixes = ["/auth", "/moim"]; // auth로 시작하는 경로 전체
   console.log("req.path", req.path);
 
   const isExcludedPath = excludedPaths.includes(req.path);
-  const isExcludedPrefix = excludedPrefixes.some((prefix) =>
-    req.path.startsWith(prefix)
-  );
+  const isExcludedPrefix = excludedPrefixes.some((prefix) => req.path.startsWith(prefix));
 
   // 현재 요청 경로가 제외할 경로에 포함되는지 확인
   if (isExcludedPath || isExcludedPrefix) {
@@ -58,6 +57,7 @@ app.use("/config", configRouter);
 
 // 사용자 라우터 등록
 app.use("/user", userRouter);
+app.use("/moim", moimRouter);
 
 // 기본 라우트
 app.get("/", (req, res) => {
