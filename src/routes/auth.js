@@ -9,6 +9,9 @@ router.post("/login", authController.login);
 
 router.get("/requestEmail", authController.requestEmail);
 router.get("/confirmEmail", authController.confirmEmail);
+
+router.get("/interests", authController.getInterests);
+
 // 소셜 로그인
 router.get("/:provider", authController.socialUrl);
 router.get("/:provider/callback", authController.socialLogin);

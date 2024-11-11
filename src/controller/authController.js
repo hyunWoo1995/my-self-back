@@ -2,6 +2,7 @@ const jwt = require("../utils/jwt-util");
 const bcrypt = require("bcryptjs");
 const redisClient = require("../utils/redis");
 const userModel = require("../model/userModel");
+const interestModel = require("../model/interestModel");
 const axios = require("axios");
 const mailSand = require("../utils/nodemailer");
 const dotenv = require("dotenv");
@@ -30,7 +31,21 @@ const getAuthUrl = (provider) => {
 
   return authUrl;
 };
+// 나이 및 성별 계산 함수
+const getGender = (birthdate) => {
+  if (!validateBirthdate(birthdate)) return;
+  const genderIndicator = parseInt(birthdate[6], 10); // 마지막 자리 성별 판별 번호
+  let gender;
+  if (genderIndicator === 1 || genderIndicator === 3) {
+    gender = "남성";
+  } else if (genderIndicator === 2 || genderIndicator === 4) {
+    gender = "여성";
+  } else {
+    gender = null;
+  }
 
+  return gender;
+};
 const getProviderConfig = (provider) => {
   const config = {
     kakao: {
@@ -93,6 +108,30 @@ const getEmailAuthCode = async (email) => {
     });
   });
 };
+// 생년월일 유효성 체크
+function validateBirthdate(birthdate) {
+  // 1. 형식 확인: 7자리 숫자여야 함
+  if (!/^\d{7}$/.test(birthdate)) {
+    return false;
+  }
+
+  // 2. 연도, 월, 일 추출
+  const year = parseInt(birthdate.slice(0, 2), 10);
+  const month = parseInt(birthdate.slice(2, 4), 10);
+  const day = parseInt(birthdate.slice(4, 6), 10);
+  const genderIndicator = parseInt(birthdate[6], 10);
+
+  // 3. 날짜 유효성 검사
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+
+  // 4. 성별 코드 확인 (1, 2, 3, 4만 유효)
+  if (![1, 2, 3, 4].includes(genderIndicator)) {
+    return false;
+  }
+
+  return true;
+}
 
 const authController = {
   async requestEmail(req, res) {
@@ -110,7 +149,6 @@ const authController = {
       const emailInfo = await mailSand(mailOptions);
       res.send(`Email sent successfully! Response: ${emailInfo}`);
     } catch (error) {
-      console.log("error", error);
       res.status(500).json({ message: "서버 에러가 발생했습니다." });
     }
   },
@@ -131,13 +169,27 @@ const authController = {
   },
   //회원 가입
   async register(req, res) {
-    const { email, password, nickname } = req.body;
+    const {
+      email,
+      password,
+      passwordCheck,
+      nickname,
+      birthdate,
+      interests,
+      addresses,
+    } = req.body;
     try {
+      const ip = req.ip || req.connection.remoteAddress;
       // 이메일 중복 확인
       const existingUser = await userModel.findByEmail(email);
       if (existingUser) {
         return res.status(400).json({ message: "중복된 계정입니다." });
       }
+      if (password !== passwordCheck) {
+        return res.status(400).json({ message: "패스워드 일치하지 않습니다." });
+      }
+      const gender = getGender(birthdate);
+
       // 비밀번호 해시 처리
       const hashedPassword = await bcrypt.hash(password, 10);
       // 새로운 사용자 생성
@@ -145,12 +197,31 @@ const authController = {
         email,
         hashedPassword,
         nickname,
+        birthdate,
+        gender,
+        ip,
       });
+      const resultInterest = await Promise.all(
+        interests.map((item) =>
+          userModel.createUserInterest({ user_id: userId, interest_id: item })
+        )
+      );
+      const resultAddress = await Promise.all(
+        addresses.map((item) =>
+          userModel.createUserAddresses({
+            user_id: userId,
+            address: item.address,
+            address_code: item.address_code,
+          })
+        )
+      );
+
       res.status(201).json({ message: "회원가입 완료", userId });
     } catch (error) {
       res.status(500).json({ message: "서버 에러가 발생했습니다." });
     }
   },
+
   // moimmoim 회원로그인
   async login(req, res) {
     const { email, password } = req.body;
@@ -232,29 +303,44 @@ const authController = {
 
       // 3. 기존 사용자가 없으면 회원가입 처리
       if (!user) {
-        const params = {
-          email,
-          hashedPassword: null,
-          provider,
-          provider_id: userData.id,
-          ip,
-        };
-        if (provider === "google") {
-          params.nickname = userData.name;
-        } else {
-          params.nickname = userData?.properties?.nickname || "사용자";
-        }
-        const insertId = await userModel.createUser(params);
-        user = await userModel.findByUser(insertId);
+        res.redirect(`${process.env.FRONTEND_URL}/sign?email=${email}`);
+      } else {
+        setCookie(res, user);
+        res.redirect(`${process.env.FRONTEND_URL}`);
       }
-      setCookie(res, user);
+      // if (!user) {
+      //   const params = {
+      //     email,
+      //     hashedPassword: null,
+      //     provider,
+      //     provider_id: userData.id,
+      //     ip,
+      //   };
+      //   if (provider === "google") {
+      //     params.nickname = userData.name;
+      //   } else {
+      //     params.nickname = userData?.properties?.nickname || "사용자";
+      //   }
+      //   const insertId = await userModel.createUser(params);
+      //   user = await userModel.findByUser(insertId);
+      // }
+      // setCookie(res, user);
 
-      res.redirect(`${process.env.FRONTEND_URL}/sign?email=${user.email}`);
+      // res.redirect(`${process.env.FRONTEND_URL}/sign?email=${user.email}`);
     } catch (error) {
       res.status(500).send({
         ok: false,
         message: `${provider} 로그인 중 서버 에러가 발생했습니다.`,
       });
+    }
+  },
+
+  async getInterests(req, res) {
+    try {
+      const interestList = await interestModel.getInterestList();
+      res.status(201).json({ ok: true, message: "성공", data: interestList });
+    } catch (error) {
+      res.status(400).send({ ok: false, message: error.message });
     }
   },
 };
