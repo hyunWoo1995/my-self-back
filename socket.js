@@ -95,57 +95,61 @@ module.exports = async (io) => {
 
     // 모임 입장 (Enter a meeting)
     socket.on("enterMeeting", async (data) => {
-      const enterRes = await meetingModel.enterMeeting({
-        users_id: data.users_id,
-        meetings_id: data.meetings_id,
-        pubClient,
-      });
+      try {
+        const enterRes = await meetingModel.enterMeeting({
+          users_id: data.users_id,
+          meetings_id: data.meetings_id,
+          pubClient,
+        });
 
-      if (enterRes.CODE !== "EM000") {
-        return io.to(data.region_code).emit("enterRes", enterRes);
-      }
-
-      const meetingRoom = `${data.region_code}-${data.meetings_id}`;
-
-      socket.join(meetingRoom);
-
-      if (enterRes && enterRes.CODE === "EM000") {
-        const lists = await meetingModel.getMeetingList({ region_code: data.region_code });
-        pubClient.setEx(`meetingList:${data.region_code}`, 3600, JSON.stringify(lists));
-        io.to(data.region_code).emit("list", lists);
-      }
-
-      pubClient.get(`messages:${data.region_code}:${data.meetings_id}`, async (err, result) => {
-        console.log("eee", err);
-        if (result) {
-          const last_message_id = await meetingModel.lastRead({ meetings_id: data.meetings_id, users_id: data.users_id });
-          console.log("last_message_id", last_message_id);
-
-          const last_meesage_index = JSON.parse(result).findIndex((v) => v.id === last_message_id);
-          console.log("last_meesage_index", last_meesage_index);
-          console.log("레디스!");
-          io.to(meetingRoom).emit("messages", { list: JSON.parse(result), readId: last_message_id });
-          await meetingModel.updateRead({ id: JSON.parse(result).pop().id, meetings_id: data.meetings_id, users_id: data.users_id });
-        } else {
-          console.log("데이터베이스!");
-          const messages = await meetingModel.getMessages(data.meetings_id);
-          const last_message_id = await meetingModel.lastRead({ meetings_id: data.meetings_id, users_id: data.users_id });
-
-          const last_meesage_index = messages.findIndex((v) => v.id === last_message_id);
-          io.to(meetingRoom).emit("messages", { list: messages, readId: last_message_id });
-
-          if (messages.length > 0) {
-            await meetingModel.updateRead({ id: messages.pop().id, meetings_id: data.meetings_id, users_id: data.users_id });
-          }
-          pubClient.setEx(`messages:${data.region_code}:${data.meetings_id}`, 3600, JSON.stringify(messages)); // Cache for 1 hour
+        if (enterRes.CODE !== "EM000") {
+          return io.to(data.region_code).emit("enterRes", enterRes);
         }
-      });
-      // const messages = await meetingModel.getMessages(data.meetings_id);
 
-      const meetingData = await meetingModel.getMeetingData({ meetings_id: data.meetings_id });
+        const meetingRoom = `${data.region_code}-${data.meetings_id}`;
 
-      // io.to(meetingRoom).emit("messages", messages);
-      io.to(meetingRoom).emit("meetingData", meetingData);
+        socket.join(meetingRoom);
+
+        if (enterRes && enterRes.CODE === "EM000") {
+          const lists = await meetingModel.getMeetingList({ region_code: data.region_code });
+          pubClient.setEx(`meetingList:${data.region_code}`, 3600, JSON.stringify(lists));
+          io.to(data.region_code).emit("list", lists);
+        }
+
+        pubClient.get(`messages:${data.region_code}:${data.meetings_id}`, async (err, result) => {
+          console.log("eee", err);
+          if (result) {
+            const last_message_id = await meetingModel.lastRead({ meetings_id: data.meetings_id, users_id: data.users_id });
+            console.log("last_message_id", last_message_id);
+
+            const last_meesage_index = JSON.parse(result).findIndex((v) => v.id === last_message_id);
+            console.log("last_meesage_index", last_meesage_index);
+            console.log("레디스!");
+            io.to(meetingRoom).emit("messages", { list: JSON.parse(result), readId: last_message_id });
+            await meetingModel.updateRead({ id: JSON.parse(result).pop().id, meetings_id: data.meetings_id, users_id: data.users_id });
+          } else {
+            console.log("데이터베이스!");
+            const messages = await meetingModel.getMessages(data.meetings_id);
+            const last_message_id = await meetingModel.lastRead({ meetings_id: data.meetings_id, users_id: data.users_id });
+
+            const last_meesage_index = messages.findIndex((v) => v.id === last_message_id);
+            io.to(meetingRoom).emit("messages", { list: messages, readId: last_message_id });
+
+            if (messages.length > 0) {
+              await meetingModel.updateRead({ id: messages.pop().id, meetings_id: data.meetings_id, users_id: data.users_id });
+            }
+            pubClient.setEx(`messages:${data.region_code}:${data.meetings_id}`, 3600, JSON.stringify(messages)); // Cache for 1 hour
+          }
+        });
+        // const messages = await meetingModel.getMessages(data.meetings_id);
+
+        const meetingData = await meetingModel.getMeetingData({ meetings_id: data.meetings_id });
+
+        // io.to(meetingRoom).emit("messages", messages);
+        io.to(meetingRoom).emit("meetingData", meetingData);
+      } catch (err) {
+        console.error("entermeeting1 err", err);
+      }
     });
 
     // 메시지 수신 및 전파 (Send message to a meeting room)
