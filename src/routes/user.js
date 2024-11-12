@@ -12,11 +12,6 @@ router.post("/", (req, res) => {
   res.status(201).json({ message: `User ${username} registered` });
 });
 
-// 사용자 정보 조회를 위한 라우트
-router.get("/:id", (req, res) => {
-  const userId = req.params.id;
-  // 사용자 정보 조회 로직
-  res.json({ message: `User details for ${userId}` });
-});
+router.get("/:id", userController.getUserInfo);
 
 module.exports = router;
