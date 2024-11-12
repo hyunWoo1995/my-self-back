@@ -18,4 +18,17 @@ redisClient.on("error", (err) => {
 redisClient.connect().then(); // redis v4 연결 (비동기)
 // const redisCli = redisClient.v4;
 
-module.exports = redisClient;
+// Redis에서 값 가져오기 (Promise 방식)
+async function getRedisData(key) {
+  return new Promise((resolve, reject) => {
+    redisClient.get(key, (err, reply) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(reply); // 값이 없으면 null이 반환됨
+      }
+    });
+  });
+}
+
+module.exports = { redisClient, getRedisData };

@@ -1,115 +1,195 @@
-swagger: "2.0"
+openapi: "3.0.0"
 info:
-  version: "0.0.1"
-  title: MoimMoim
-# during dev, should point to your local machine
-host: "localhost:8000"
-# basePath prefixes all resource paths
-basePath: /common/v1
+  version: "1.0.0"
+  title: moimmoim
+  description: 회원가입, 로그인, 회원 상세 조회, JWT 토큰 관리를 포함한 API 문서
+servers:
+  - url: "http://localhost:80"
+
 tags:
+  - name: auth
+    description: 인증 관련 API
   - name: user
-    description: 사용자 정보 관련
-  - name: chat
-    description: 채팅 관련
-  - name: config
-    description: 설정 관련
-#
-schemes:
-  # tip: remove http to make production-grade
-  - http
-  - https
-# format of bodies a client can send (Content-Type)
-consumes:
-  - application/json
-  - application/octet-stream
-# format of the responses to the client (Accepts)
-produces:
-  - application/json
-securityDefinitions:
-  Bearer:
-    type: apiKey
-    name: authorization
-    in: header
-    description: "/auth에서 로그인 후 토큰입력 : Bearer|[token]"
+    description: 사용자 관련 API
+
 paths:
-  /user:
-    x-swagger-router-controller: moim
-    get:
-      security:
-        - Bearer: []
-      tags:
-        - user
-      operationId: getUserList
-      summary: 회원목록조회
-      produces:
-        - application/json
-      responses:
-        200:
-          description: Success
-          schema:
-            type: array
-            items:
-              $ref: "#/definitions/UserInfo"
-        500:
-          description: Server Error
+  /auth/register:
     post:
-      security:
-        - Bearer: []
       tags:
-        - user
-      operationId: addUserInfo
-      summary: 신규회원 추가
-      produces:
-        - application/json
-      parameters:
-        - in: body
-          name: body
-          required: true
-          description: "신규유저정보"
-          schema:
-            $ref: "#/definitions/UserInput"
+        - auth
+      summary: 회원가입
+      description: 새로운 사용자를 등록합니다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterUser"
+      responses:
+        201:
+          description: 회원가입 성공
+        400:
+          description: 잘못된 요청
+
+  /auth/login:
+    post:
+      tags:
+        - auth
+      summary: 로그인
+      description: 사용자가 로그인하고 JWT 토큰을 받습니다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginUser"
       responses:
         200:
-          description: Success
+          description: 로그인 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        401:
+          description: 인증 실패 - 잘못된 자격 증명
+
+  /auth/requestEmail:
+    post:
+      tags:
+        - auth
+      summary: 이메일 인증 요청
+      description: 이메일 인증 요청
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: "ounsy0612@gmail.com"
+      responses:
+        201:
+          description: 성공
+        400:
+          description: 실패 - 이메일 누락
         500:
-          description: Server Error
+          description: 서버 에러
 
-definitions:
-  UserInput:
-    type: object
-    required:
-      - userid
-      - name
-      - business_type
-    properties:
-      userid:
-        type: string
-        example: "moim"
-      passwd:
-        type: [string, "null"]
-        example: "password"
-      name:
-        type: string
-        example: "이현우"
-      business_type:
-        type: string
-        example: "hannong"
-      business_update:
-        type: [boolean, "null"]
-        example: true
+  /auth/confirmEmail:
+    post:
+      tags:
+        - auth
+      summary: 이메일 인증 확인
+      description: 이메일 인증 확인
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: "ounsy0612@gmail.com"
+                code:
+                  type: string
+                  example: "432684"
+      responses:
+        201:
+          description: 성공
+        400:
+          description: 실패 - 이메일 누락
+        500:
+          description: 서버 에러
 
-  UserInfo:
-    type: object
-    properties:
-      id:
-        type: integer
-        example: 1
-      userid:
-        type: string
-        example: "moim"
-      name:
-        type: string
-        example: "이현우"
-##
-# end of contents
-##
+  /auth/interests:
+    get:
+      tags:
+        - auth
+      summary: 관심사 리스트
+      description: 관심사 리스트
+      responses:
+        201:
+          description: 성공
+        500:
+          description: 서버 에러
+
+  /user/{id}:
+    get:
+      tags:
+        - user
+      summary: 회원 상세 조회
+      description: JWT 토큰을 사용하여 회원 정보를 조회합니다.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: "회원의 고유 ID"
+      responses:
+        200:
+          description: 회원 상세 정보
+        401:
+          description: 인증 실패 - 토큰 없음 또는 유효하지 않은 토큰
+
+#스키마 설정
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    RegisterUser:
+      type: object
+      properties:
+        email:
+          type: string
+          example: "user@example.com"
+        nickname:
+          type: string
+          example: "John Doe"
+        password:
+          type: string
+          example: ""
+        passwordCheck:
+          type: string
+          example: ""
+        birthdate:
+          type: string
+          example: "9106121"
+        interests:
+          type: array
+          items:
+            type: integer
+          example: [1, 8]
+        addresses:
+          type: array
+          items:
+            type: object
+            properties:
+              address:
+                type: string
+                example: "논현1동"
+              address_code:
+                type: string
+                example: "AAA"
+
+    LoginUser:
+      type: object
+      properties:
+        email:
+          type: string
+          example: "tndduf123"
+        password:
+          type: string
+          example: "tndduf"

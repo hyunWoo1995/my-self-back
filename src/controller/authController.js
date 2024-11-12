@@ -1,6 +1,6 @@
 const jwt = require("../utils/jwt-util");
 const bcrypt = require("bcryptjs");
-const redisClient = require("../utils/redis");
+const { redisClient } = require("../utils/redis");
 const userModel = require("../model/userModel");
 const interestModel = require("../model/interestModel");
 const axios = require("axios");
@@ -136,6 +136,8 @@ function validateBirthdate(birthdate) {
 const authController = {
   async requestEmail(req, res) {
     const { email } = req.body;
+    if (!email)
+      return res.status(400).json({ message: "이메일이 필요합니다." });
     try {
       const authCode = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -154,6 +156,8 @@ const authController = {
   },
   async confirmEmail(req, res) {
     const { email, code } = req.body;
+    if (!email || !code)
+      return res.status(400).json({ message: "필수값 확인하세요." });
     try {
       const storedCode = await getEmailAuthCode(email);
       if (storedCode === code) {
@@ -243,7 +247,11 @@ const authController = {
         });
       }
       setCookie(res, user);
-      res.status(200).json({ message: "로그인 되었습니다." });
+      const accessToken = jwt.sign(user);
+      const refreshToken = jwt.refresh();
+      res
+        .status(200)
+        .json({ message: "로그인 되었습니다.", accessToken, refreshToken });
     } catch (error) {
       res.status(500).send({
         ok: false,
