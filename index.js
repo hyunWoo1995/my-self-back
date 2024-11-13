@@ -44,9 +44,7 @@ app.use((req, res, next) => {
   console.log("req.path", req.path);
 
   const isExcludedPath = excludedPaths.includes(req.path);
-  const isExcludedPrefix = excludedPrefixes.some((prefix) =>
-    req.path.startsWith(prefix)
-  );
+  const isExcludedPrefix = excludedPrefixes.some((prefix) => req.path.startsWith(prefix));
 
   // 현재 요청 경로가 제외할 경로에 포함되는지 확인
   if (isExcludedPath || isExcludedPrefix) {
@@ -71,7 +69,7 @@ app.get("/", (req, res) => {
   res.send("Hello, JWT!");
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Swagger docs available on http://localhost:${PORT}/api-docs`);
 });
