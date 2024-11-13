@@ -7,8 +7,8 @@ router.post("/register", authController.register);
 // 로그인
 router.post("/login", authController.login);
 
-router.get("/requestEmail", authController.requestEmail);
-router.get("/confirmEmail", authController.confirmEmail);
+router.post("/requestEmail", authController.requestEmail);
+router.post("/confirmEmail", authController.confirmEmail);
 
 router.get("/interests", authController.getInterests);
 

@@ -2,8 +2,9 @@ const express = require("express");
 const app = express();
 const http = require("http");
 const server = http.createServer(app);
-const swaggerNodeRunner = require("swagger-node-runner");
-const SwaggerUi = require("swagger-ui-express");
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yamljs");
+
 const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
 const authJWT = require("./src/middlewares/authJwt");
@@ -31,6 +32,10 @@ setupSocket(io);
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
+// Swagger YAML 파일 경로 설정 및 미들웨어 추가
+const swaggerDocument = YAML.load("./src/swagger/swagger.yaml");
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 // 토큰 체크하기!
 app.use((req, res, next) => {
   // 제외할 경로 리스트
@@ -39,7 +44,9 @@ app.use((req, res, next) => {
   console.log("req.path", req.path);
 
   const isExcludedPath = excludedPaths.includes(req.path);
-  const isExcludedPrefix = excludedPrefixes.some((prefix) => req.path.startsWith(prefix));
+  const isExcludedPrefix = excludedPrefixes.some((prefix) =>
+    req.path.startsWith(prefix)
+  );
 
   // 현재 요청 경로가 제외할 경로에 포함되는지 확인
   if (isExcludedPath || isExcludedPrefix) {
@@ -64,34 +71,7 @@ app.get("/", (req, res) => {
   res.send("Hello, JWT!");
 });
 
-const config = {
-  appRoot: __dirname,
-  swagger: "src/swagger/swagger.yaml",
-};
-
-swaggerNodeRunner.create(config, function (err, swaggerRunner) {
-  if (err) throw err;
-
-  app.use("/docs", SwaggerUi.serve, SwaggerUi.setup(require("yamljs").load(config.swagger)));
-
-  const swaggerExpress = swaggerRunner.expressMiddleware();
-  swaggerExpress.register(app);
-
-  app.use(express.static("public"));
-
-  app.use("/a", function (req, res, next) {
-    const value = "'sdfasdfasdfasasdf'";
-    res.send(
-      `<head><title>MoimMoim</title><link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor-viewer.min.css" /></head><body><script src="https://uicdn.toast.com/editor/latest/toastui-editor-viewer.js"></script><div id="viewer"/><script>new toastui.Editor({el: document.querySelector("#viewer"),initialValue: ${value}});</script></body>`
-    );
-  });
-
-  // let port = 8085;
-  // if (swaggerExpress.runner.swagger.host.split(":")[1] !== undefined) {
-  //   port = swaggerExpress.runner.swagger.host.split(":")[1];
-  // }
-
-  server.listen(80, function () {
-    console.log(`api listening on http://${swaggerExpress.runner.swagger.host}/docs`);
-  });
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Swagger docs available on http://localhost:${PORT}/api-docs`);
 });
