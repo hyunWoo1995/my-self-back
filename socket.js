@@ -1,5 +1,6 @@
+const { promisify } = require("util"); // Import promisify
 const { createClient } = require("redis");
-const meetingModel = require("./src/model/moimModel");
+const moimModel = require("./src/model/moimModel");
 const { createAdapter } = require("@socket.io/redis-adapter");
 
 // socket.js
@@ -8,6 +9,10 @@ module.exports = async (io) => {
     url: `redis://${process.env.REDIS_USERNAME}:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}/0`,
     legacyMode: true, // 반드시 설정 !!
   });
+
+  const getAsync = promisify(pubClient.get).bind(pubClient); // Promisify `get`
+  const setExAsync = promisify(pubClient.setEx).bind(pubClient); // Promisify `setEx`
+
   const subClient = pubClient.duplicate();
 
   Promise.all([pubClient.connect(), subClient.connect()]);
@@ -15,6 +20,10 @@ module.exports = async (io) => {
   pubClient.on("error", (err) => {
     console.error("pubClient Error", err);
   });
+
+  // getAsync(`accessToken:1`, (err, result) => {
+  //   console.log("result", result);
+  // });
 
   io.adapter(createAdapter(pubClient, subClient));
 
@@ -37,7 +46,104 @@ module.exports = async (io) => {
   // });
 
   io.on("connection", (socket) => {
+    const enterMeeting = async ({ region_code, meetings_id, users_id, type }) => {
+      const meetingRoom = `${region_code}-${meetings_id}`;
+      socket.join(meetingRoom);
+
+      try {
+        const [myListCache, messagesCache, meetingListCache, meetingDataCache] = await Promise.all([
+          getAsync(`myList:${users_id}`),
+          getAsync(`messages:${region_code}:${meetings_id}`),
+          getAsync(`meetingList:${region_code}`),
+          getAsync(`meetingData:${region_code}:${meetings_id}`),
+        ]);
+
+        let meetingList, meetingData, messages;
+
+        // Meeting data check
+        if (meetingDataCache) {
+          meetingData = JSON.parse(meetingDataCache);
+          console.log("Redis cache used for meeting data");
+        } else {
+          meetingData = await moimModel.getMeetingData({ meetings_id });
+          setExAsync(`meetingData:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingData));
+          console.log("Database used for meeting data");
+        }
+
+        io.to(meetingRoom).emit("meetingData", meetingData);
+
+        // Check user's meeting list cache
+        if (myListCache) {
+          const myList = JSON.parse(myListCache);
+          const target = myList.find((v) => v.meetings_id === meetings_id && v.users_id === users_id);
+          console.log("target", myList, target);
+          const isApplied = target && Object.keys(target).length > 0;
+          const isMember = target?.status === 1;
+
+          console.log("isAppliedisApplied", isApplied, type);
+          if (isMember) {
+            // socket.join(meetingRoom);
+            // io.to(region_code).emit('enterRes')
+            io.to(region_code).emit("enterRes", { CODE: "EM000", DATA: "입장" });
+          } else if (type === 3) {
+            return io.to(region_code).emit("enterRes", { CODE: "EM001", DATA: "입장 신청이 필요합니다." });
+          } else if (type === 4) {
+            if (isApplied) {
+              return io.to(region_code).emit("enterRes", { CODE: "EM002", DATA: "입장 신청이 완료되었습니다." });
+            } else {
+              console.log("enterResenterResenterRes");
+              return io.to(region_code).emit("enterRes", { CODE: "EM001", DATA: "입장 신청이 필요합니다." });
+            }
+          }
+        }
+
+        // Meeting list check
+        if (meetingListCache) {
+          meetingList = JSON.parse(meetingListCache);
+        } else {
+          meetingList = await moimModel.getMeetingList({ region_code });
+          await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(meetingList));
+        }
+        io.to(region_code).emit("list", meetingList);
+
+        // Messages check
+        if (messagesCache) {
+          messages = JSON.parse(messagesCache);
+          console.log("Redis cache used for messages");
+        } else {
+          messages = await moimModel.getMessages(meetings_id);
+          if (messages.length > 0) {
+            await setExAsync(`messages:${region_code}:${meetings_id}`, 3600, JSON.stringify(messages));
+          }
+          console.log("Database used for messages");
+        }
+        io.to(meetingRoom).emit("messages", { list: messages, readId: null });
+
+        // io.to(meetingRoom).emit("meetingData", meetingData);
+      } catch (error) {
+        console.error("Error in enterMeeting:", error);
+      }
+    };
+
+    console.log("connection", socket.id);
     socket.emit("message", socket.id);
+    const id = 1;
+    // 나의 모임 목록
+    socket.on("userData", async (data) => {
+      console.log("dd", data);
+
+      pubClient.get(`myList:${data.id}`, async (err, result) => {
+        if (result) {
+          console.log("mylist redis!!");
+          io.to(socket.id).emit("myList", JSON.parse(result));
+        } else {
+          const res = await moimModel.getMyList({ users_id: data.id });
+          pubClient.setEx(`myList:${data.id}`, 3600, JSON.stringify(res));
+
+          io.to(socket.id).emit("myList", res);
+        }
+      });
+    });
 
     // 지역 입장 (Join region)
     socket.on("join", async ({ user, region_code }) => {
@@ -51,7 +157,7 @@ module.exports = async (io) => {
         } else {
           console.log("데이터베이스!");
 
-          const res = await meetingModel.getMeetingList({ region_code: region_code });
+          const res = await moimModel.getMeetingList({ region_code: region_code });
           pubClient.setEx(`meetingList:${region_code}`, 3600, JSON.stringify(res)); // Cache for 1 hour
 
           io.to(region_code).emit("list", res);
@@ -63,7 +169,7 @@ module.exports = async (io) => {
 
     // 모임 생성 (Generate a meeting)
     socket.on("generateMeeting", async (data) => {
-      const res = await meetingModel.generateMeeting({
+      const res = await moimModel.generateMeeting({
         name: data.name,
         region_code: data.region_code,
         maxMembers: data.maxMembers,
@@ -76,103 +182,72 @@ module.exports = async (io) => {
 
       if (res.affectedRows > 0) {
         // Add the user to the new meeting
-        await meetingModel.enterMeeting({
+        await moimModel.enterMeeting({
           users_id: data.users_id,
           meetings_id: res.insertId,
+          type: data.type,
           creator: true,
         });
 
-        const updatedMeetingList = await meetingModel.getMeetingList({
+        const updatedMeetingList = await moimModel.getMeetingList({
           region_code: data.region_code,
         });
 
         pubClient.setEx(`meetingList:${data.region_code}`, 3600, JSON.stringify(updatedMeetingList));
 
+        const updatemyList = await moimModel.getMyList({ users_id: data.users_id });
+
+        await setExAsync(`myList:${data.users_id}`, 3600, JSON.stringify(updatemyList));
         io.to(data.region_code).emit("list", updatedMeetingList);
         // pubClient.publish(data.region_code, JSON.stringify({ type: "listUpdate", data: updatedMeetingList }));
       }
     });
 
     // 모임 입장 (Enter a meeting)
-    socket.on("enterMeeting", async (data) => {
-      try {
-        const enterRes = await meetingModel.enterMeeting({
-          users_id: data.users_id,
-          meetings_id: data.meetings_id,
-          pubClient,
-        });
+    socket.on("enterMeeting", enterMeeting);
 
-        if (enterRes.CODE !== "EM000") {
-          return io.to(data.region_code).emit("enterRes", enterRes);
-        }
+    // 모임 입장 신청
+    socket.on("joinMeeting", async ({ region_code, users_id, meetings_id, type }) => {
+      // if (type === 3) {
+      //   await moimModel.enterMeeting({ meetings_id, users_id, type });
+      // } else if (type === 4) {
+      //   return io.to(region_code).emit("enterRes", { CODE: EM002, DATA: "입장 신청이 완료되었습니다." });
+      // }
+      await moimModel.enterMeeting({ meetings_id, users_id, type });
 
-        const meetingRoom = `${data.region_code}-${data.meetings_id}`;
+      const res = await moimModel.getMyList({ users_id });
+      pubClient.setEx(`myList:${users_id}`, 3600, JSON.stringify(res));
 
-        socket.join(meetingRoom);
+      enterMeeting({ meetings_id, users_id, region_code, type });
+    });
 
-        if (enterRes && enterRes.CODE === "EM000") {
-          const lists = await meetingModel.getMeetingList({ region_code: data.region_code });
-          pubClient.setEx(`meetingList:${data.region_code}`, 3600, JSON.stringify(lists));
-          io.to(data.region_code).emit("list", lists);
-        }
-
-        pubClient.get(`messages:${data.region_code}:${data.meetings_id}`, async (err, result) => {
-          console.log("eee", err);
-          if (result) {
-            const last_message_id = await meetingModel.lastRead({ meetings_id: data.meetings_id, users_id: data.users_id });
-            console.log("last_message_id", last_message_id);
-
-            const last_meesage_index = JSON.parse(result).findIndex((v) => v.id === last_message_id);
-            console.log("last_meesage_index", last_meesage_index);
-            console.log("레디스!");
-            io.to(meetingRoom).emit("messages", { list: JSON.parse(result), readId: last_message_id });
-            // await meetingModel.updateRead({ id: JSON.parse(result).pop().id, meetings_id: data.meetings_id, users_id: data.users_id });
-          } else {
-            console.log("데이터베이스!");
-            const messages = await meetingModel.getMessages(data.meetings_id);
-            const last_message_id = await meetingModel.lastRead({ meetings_id: data.meetings_id, users_id: data.users_id });
-
-            const last_meesage_index = messages.findIndex((v) => v.id === last_message_id);
-            io.to(meetingRoom).emit("messages", { list: messages, readId: last_message_id });
-
-            if (messages.length > 0) {
-              // await meetingModel.updateRead({ id: messages.pop().id, meetings_id: data.meetings_id, users_id: data.users_id });
-            }
-            pubClient.setEx(`messages:${data.region_code}:${data.meetings_id}`, 3600, JSON.stringify(messages)); // Cache for 1 hour
-          }
-        });
-        // const messages = await meetingModel.getMessages(data.meetings_id);
-
-        const meetingData = await meetingModel.getMeetingData({ meetings_id: data.meetings_id });
-
-        // io.to(meetingRoom).emit("messages", messages);
-        io.to(meetingRoom).emit("meetingData", meetingData);
-      } catch (err) {
-        console.error("entermeeting1 err", err);
-      }
+    // 모임 떠남
+    socket.on("leaveMeeting", async ({ region_code, meetings_id }) => {
+      socket.leave(`${region_code}-${meetings_id}`);
     });
 
     // 메시지 수신 및 전파 (Send message to a meeting room)
     socket.on("sendMessage", async (data) => {
+      console.log("sendMessage", data);
       const meetingRoom = `${data.region_code}-${data.meetings_id}`;
 
-      const res = await meetingModel.sendMessage(data);
+      const res = await moimModel.sendMessage(data);
 
       if (res.affectedRows > 0) {
-        const message = await meetingModel.getMessage(data.meetings_id, res.insertId);
-        // await meetingModel.updateRead({ id: res.insertId, meetings_id: data.meetings_id, users_id: data.users_id });
+        const message = await moimModel.getMessage(data.meetings_id, res.insertId);
+        console.log("message", message);
+        // await moimModel.updateRead({ id: res.insertId, meetings_id: data.meetings_id, users_id: data.users_id });
 
         io.to(meetingRoom).emit("receiveMessage", message);
-        const messages = await meetingModel.getMessages(data.meetings_id);
 
-        pubClient.setEx(`messages:${data.region_code}:${data.meetings_id}`, 3600, JSON.stringify(messages)); // Cache for 1 hour
+        const messages = await moimModel.getMessages(data.meetings_id);
 
-        // pubClient.publish(meetingRoom, JSON.stringify({ type: "newMessage", data: message }));
+        setExAsync(`messages:${data.region_code}:${data.meetings_id}`, 3600, JSON.stringify(messages));
       }
     });
 
     // socket.on("readMessage", async (data) => {
-    //   await meetingModel.updateRead(data);
+    //   await moimModel.updateRead(data);
     // });
 
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)
