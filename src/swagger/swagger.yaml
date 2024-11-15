@@ -5,6 +5,7 @@ info:
   description: 회원가입, 로그인, 회원 상세 조회, JWT 토큰 관리를 포함한 API 문서
 servers:
   - url: "http://localhost:80"
+  - url: "http://moimmoim.duckdns.org"
 
 tags:
   - name: auth
@@ -140,6 +141,16 @@ paths:
           description: 회원 상세 정보
         401:
           description: 인증 실패 - 토큰 없음 또는 유효하지 않은 토큰
+
+  /moim/category:
+    get:
+      tags:
+        - moim
+      summary: 모임 카테고리 조회
+      description: 모임 카테고리를 조회한다.
+      responses:
+        200:
+          description: 모임 카테고리
 
 #스키마 설정
 components:

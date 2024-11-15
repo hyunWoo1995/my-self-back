@@ -16,6 +16,8 @@ const socketIo = require("socket.io");
 const setupSocket = require("./socket");
 const path = require("path");
 const axios = require("axios");
+const cors = require('cors');
+
 
 dotenv.config(); // .env가져오기
 
@@ -35,6 +37,12 @@ app.use(bodyParser.json());
 // Swagger YAML 파일 경로 설정 및 미들웨어 추가
 const swaggerDocument = YAML.load("./src/swagger/swagger.yaml");
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+app.use(cors({
+  origin: '*',  // 모든 도메인 허용
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],  // 허용할 HTTP 메서드
+  allowedHeaders: ['Content-Type', 'Authorization']  // 허용할 헤더
+}));
 
 // 토큰 체크하기!
 app.use((req, res, next) => {

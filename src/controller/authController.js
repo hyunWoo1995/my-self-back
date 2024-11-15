@@ -87,6 +87,7 @@ const setCookie = (res, user) => {
     "EX",
     parseInt(process.env.REFRESH_TOKEN_TIMER)
   );
+  
   // 브라우저cookie에다 넣어줌.
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
@@ -193,6 +194,10 @@ const authController = {
         return res.status(400).json({ message: "패스워드 일치하지 않습니다." });
       }
       const gender = getGender(birthdate);
+
+      if (!gender) {
+        return res.status(400).json({ message: "주민등록번호 잘못입력하셨습니다." });
+      }
 
       // 비밀번호 해시 처리
       const hashedPassword = await bcrypt.hash(password, 10);
