@@ -135,10 +135,31 @@ function validateBirthdate(birthdate) {
 }
 
 const authController = {
+  // 1. refreshToken 검증
+  async refreshToken(req, res) {
+    const { refreshToken } = req.cookies;
+
+    if (!refreshToken) {
+      return res.status(401).json({ message: '리프레시 토큰이 제공되지 않았습니다.' });
+    }
+
+    try {
+      const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+
+      // 2. refresh token이 유효하면 새로운 access token 발급
+      const newAccessToken = jwt.sign({ id: decoded.userId });
+
+      return res.sendSuccess('요청 성공', { accessToken: newAccessToken })
+    } catch (error) {
+      console.error('리프레시 토큰 갱신 실패', error);
+      return res.sendError(403,'유효하지 않은 리프레시 토큰입니다.')
+    }
+  },
   async requestEmail(req, res) {
     const { email } = req.body;
     if (!email)
-      return res.status(400).json({ message: "이메일이 필요합니다." });
+      
+      return res.sendError(400,"이메일이 필요합니다.")
     try {
       const authCode = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -150,9 +171,9 @@ const authController = {
         html: `<h1>안녕하세요</h1><p>moimmoim인증번호는 :${authCode} 입니다</p>`, // HTML 형식으로 작성 가능
       };
       const emailInfo = await mailSand(mailOptions);
-      res.send(`Email sent successfully! Response: ${emailInfo}`);
+      res.sendSuccess(`Email sent successfully! Response: ${emailInfo}`)
     } catch (error) {
-      res.status(500).json({ message: "서버 에러가 발생했습니다." });
+      res.sendError()
     }
   },
   async confirmEmail(req, res) {
@@ -164,12 +185,13 @@ const authController = {
       if (storedCode === code) {
         // 인증 성공
         await redisClient.del(`emailAuthCode:${email}`); // 인증 후 코드를 삭제
-        res.status(201).json({ ok: true, message: "인증성공" });
+        
+        res.sendSuccess('인증 성공')
       } else {
-        res.status(201).json({ ok: false, message: "인증실패" });
+        res.sendError(201, '인증 실패')
       }
     } catch (error) {
-      res.status(500).json({ ok: false, message: "서버 에러가 발생했습니다." });
+      res.sendError()
     }
   },
   //회원 가입
@@ -188,15 +210,15 @@ const authController = {
       // 이메일 중복 확인
       const existingUser = await userModel.findByEmail(email);
       if (existingUser) {
-        return res.status(400).json({ message: "중복된 계정입니다." });
+        return res.sendError(400, '중복된 계정입니다.')
       }
       if (password !== passwordCheck) {
-        return res.status(400).json({ message: "패스워드 일치하지 않습니다." });
+        return res.sendError(400, '패스워드 일치하지 않습니다.')
       }
       const gender = getGender(birthdate);
 
       if (!gender) {
-        return res.status(400).json({ message: "주민등록번호 잘못입력하셨습니다." });
+        return res.sendError(400, '주민등록번호 잘못입력하셨습니다.')
       }
 
       // 비밀번호 해시 처리
@@ -225,9 +247,9 @@ const authController = {
         )
       );
 
-      res.status(201).json({ message: "회원가입 완료", userId });
+      res.sendSuccess('회원가입 완료', {userId})
     } catch (error) {
-      res.status(500).json({ message: "서버 에러가 발생했습니다." });
+      res.sendError()
     }
   },
 
@@ -238,30 +260,19 @@ const authController = {
       // 1. 사용자가 존재하는지 이메일로 찾기
       const user = await userModel.findByEmail(email);
       if (!user) {
-        return res.status(401).send({
-          ok: false,
-          message: "계정 정보가 틀렸습니다. 확인바랍니다.",
-        });
+        return res.sendError(401,'계정 정보가 틀렸습니다. 확인바랍니다.')
       }
       // 2. 비밀번호 확인
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        return res.status(401).send({
-          ok: false,
-          message: "계정 정보가 틀렸습니다. 확인바랍니다.",
-        });
+        return res.sendError(401,'계정 정보가 틀렸습니다. 확인바랍니다.')
       }
       setCookie(res, user);
       const accessToken = jwt.sign(user);
       const refreshToken = jwt.refresh();
-      res
-        .status(200)
-        .json({ message: "로그인 되었습니다.", accessToken, refreshToken });
+      res.sendSuccess('로그인 되었습니다.', {accessToken, refreshToken})
     } catch (error) {
-      res.status(500).send({
-        ok: false,
-        message: "서버 에러가 발생했습니다.",
-      });
+      res.sendError()
     }
   },
 
@@ -272,7 +283,7 @@ const authController = {
       const authUrl = getAuthUrl(provider); // 동적으로 로그인 URL 생성
       res.redirect(authUrl);
     } catch (error) {
-      res.status(400).send({ ok: false, message: error.message });
+      res.sendError()
     }
   },
 
@@ -285,10 +296,7 @@ const authController = {
       // 각 서비스별 클라이언트 ID, 비밀, 토큰 URL 등 매핑 설정
       const config = getProviderConfig(provider);
       if (!config) {
-        return res.status(400).send({
-          ok: false,
-          message: "지원되지 않는 소셜 로그인 제공자입니다.",
-        });
+        return res.sendError(400, '지원되지 않는 소셜 로그인 제공자입니다.')
       }
 
       // 1. 인가 코드로 액세스 토큰 요청
@@ -341,19 +349,16 @@ const authController = {
 
       // res.redirect(`${process.env.FRONTEND_URL}/sign?email=${user.email}`);
     } catch (error) {
-      res.status(500).send({
-        ok: false,
-        message: `${provider} 로그인 중 서버 에러가 발생했습니다.`,
-      });
+      res.sendError(500, `${provider} 로그인 중 서버 에러가 발생했습니다.`);
     }
   },
 
   async getInterests(req, res) {
     try {
       const interestList = await interestModel.getInterestList();
-      res.status(201).json({ ok: true, message: "성공", data: interestList });
+      res.sendSuccess('성공', interestList)
     } catch (error) {
-      res.status(400).send({ ok: false, message: error.message });
+      res.sendError();
     }
   },
 };

@@ -49,7 +49,8 @@ module.exports = {
     const getAsync = promisify(redisClient.get).bind(redisClient);
 
     try {
-      const data = await getAsync(userId); // refresh token 가져오기
+      const data = await getAsync(`refreshToken:${userId}`); // refresh token 가져오기
+      console.log('data', data)
       if (token === data) {
         try {
           jwt.verify(token, refreshTokenSecret);

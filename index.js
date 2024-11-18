@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+const responseHelper = require('./src/middlewares/responseHelper');
 const http = require("http");
 const server = http.createServer(app);
 const swaggerUi = require("swagger-ui-express");
@@ -21,6 +22,9 @@ const cors = require('cors');
 
 dotenv.config(); // .env가져오기
 
+// 응답 헬퍼 미들웨어 추가
+app.use(responseHelper);
+
 const io = socketIo(server);
 const PORT = process.env.PORT || 80;
 const publicDirectoryPath = path.join(__dirname, "./public");
@@ -41,7 +45,8 @@ app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use(cors({
   origin: '*',  // 모든 도메인 허용
   methods: ['GET', 'POST', 'PUT', 'DELETE'],  // 허용할 HTTP 메서드
-  allowedHeaders: ['Content-Type', 'Authorization']  // 허용할 헤더
+  allowedHeaders: ['Content-Type', 'Authorization'], // 허용할 헤더
+  credentials: true // 쿠키 포함 등의 옵션을 허용할 경우
 }));
 
 // 토큰 체크하기!
