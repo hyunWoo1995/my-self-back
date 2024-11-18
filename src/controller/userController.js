@@ -14,15 +14,15 @@ const userController = {
       const accessToken = await getRedisData(`accessToken:${userId}`);
 
       if (token !== accessToken) {
-        return res.status(400).json({ message: "본인 토큰값이 아닙니다." });
+        return res.sendError(400, '유효하지 않은 토큰입니다.')
       }
       const userInfo = await userModel.findByUser(userId);
       if (!userInfo) {
-        return res.status(404).json({ message: "사용자 정보를 찾을 수 없습니다." });
+        return res.sendError(404, '사용자 정보를 찾을 수 없습니다.');
       }
-      return res.status(200).json({ ok: true, message: "User info", data: userInfo });
+      return res.sendSuccess('User info', userInfo);
     } catch (err) {
-      return res.status(401).json({ message: "유효하지 않은 토큰입니다." });
+      return res.sendError(401,'유효하지 않은 토큰입니다.');
     }
   },
   async getUserList(req, res) {
