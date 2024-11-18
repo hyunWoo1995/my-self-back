@@ -1,10 +1,10 @@
 const db = require("../../db");
 
 const Interest = {
-  // 이메일로 사용자 찾기
+  // 관심사 리스트
   async getInterestList() {
     const [rows] = await db.query("SELECT * FROM interests ");
-    return rows; // 사용자 존재하면 첫 번째 row 반환
+    return rows;
   },
 };
 module.exports = Interest;

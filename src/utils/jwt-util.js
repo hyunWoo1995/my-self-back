@@ -14,7 +14,7 @@ const refreshTokenTime = "7d";
 module.exports = {
   sign: (user) => {
     const payload = {
-      id: user.id,
+      userId: user.id,
     };
     return jwt.sign(payload, accessTokenSecret, {
       algorithm: algorithmType, // 암호화 알고리즘
@@ -26,11 +26,7 @@ module.exports = {
     let decoded = null;
     try {
       decoded = jwt.verify(token, accessTokenSecret);
-      return {
-        ok: true,
-        id: decoded.id,
-        role: decoded.role,
-      };
+      return { ok: true, ...decoded };
     } catch (err) {
       return {
         ok: false,
@@ -53,7 +49,8 @@ module.exports = {
     const getAsync = promisify(redisClient.get).bind(redisClient);
 
     try {
-      const data = await getAsync(userId); // refresh token 가져오기
+      const data = await getAsync(`refreshToken:${userId}`); // refresh token 가져오기
+      console.log('data', data)
       if (token === data) {
         try {
           jwt.verify(token, refreshTokenSecret);

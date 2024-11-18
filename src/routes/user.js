@@ -12,6 +12,6 @@ router.post("/", (req, res) => {
   res.status(201).json({ message: `User ${username} registered` });
 });
 
-router.get("/:id", userController.getUserInfo);
+router.get("/myInfo", userController.getUserMyInfo);
 
 module.exports = router;

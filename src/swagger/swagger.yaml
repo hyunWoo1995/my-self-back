@@ -5,6 +5,7 @@ info:
   description: 회원가입, 로그인, 회원 상세 조회, JWT 토큰 관리를 포함한 API 문서
 servers:
   - url: "http://localhost:80"
+  - url: "http://moimmoim.duckdns.org"
 
 tags:
   - name: auth
@@ -120,7 +121,7 @@ paths:
         500:
           description: 서버 에러
 
-  /user/{id}:
+  /user/myInfo:
     get:
       tags:
         - user
@@ -128,13 +129,7 @@ paths:
       description: JWT 토큰을 사용하여 회원 정보를 조회합니다.
       security:
         - BearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: integer
-          description: "회원의 고유 ID"
+      
       responses:
         200:
           description: 회원 상세 정보
