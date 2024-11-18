@@ -92,13 +92,13 @@ const setCookie = (res, user) => {
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',  // production에서는 secure: true
-    sameSite: 'None',  // 크로스 도메인에서 쿠키 전송 가능
+    sameSite: 'Lax',  // 크로스 도메인에서 쿠키 전송 가능
     maxAge: parseInt(process.env.ACCESS_TOKEN_TIMER) * 1000, // 60분
   });
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',  // production에서는 secure: true
-    sameSite: 'None',  // 크로스 도메인에서 쿠키 전송 가능
+    sameSite: 'Lax',  // 크로스 도메인에서 쿠키 전송 가능
     maxAge: parseInt(process.env.REFRESH_TOKEN_TIMER) * 1000, // 7일
   });
 };
