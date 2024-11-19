@@ -102,11 +102,21 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
   return rows;
 };
 
+// 모임 - 유저 active time 변경
+exports.modifyActiveTime = async ({ meetings_id, users_id }) => {
+  const [row] = await db.query("update meetings_users set last_active_time = ? where meetings_id = ? and users_id = ?", [new Date(), meetings_id, users_id]);
+
+  return row;
+};
 //
 
 // 메세지 전체 조회
 exports.getMessages = async ({ meetings_id, length }) => {
-  const [lists] = await db.query("SELECT m.* FROM messages m WHERE m.meetings_id = ? ORDER BY m.created_at desc limit 20;", [meetings_id]);
+  const [lists] = await db.query("SELECT m.id, m.contents, m.created_at, m.users_id, m.meetings_id FROM moimmoim.messages AS m where meetings_id = ? ORDER BY  m.created_at DESC;", [meetings_id]);
+
+  const [meetingsUsers] = await db.query("select * from meetings_users where meetings_id = ? and status = 1", [meetings_id]);
+
+  console.log(",mm", lists, meetingsUsers);
 
   const [[{ total_count }]] = await db.query(
     `
@@ -122,7 +132,10 @@ exports.getMessages = async ({ meetings_id, length }) => {
 
 // 메세지 단일 조회
 exports.getMessage = async (meetings_id, id) => {
-  const [rows] = await db.query("select * from messages where meetings_id = ? and id= ?", [meetings_id, id]);
+  const [rows] = await db.query(
+    "select m.*, ( SELECT COUNT(mu.id) FROM moimmoim.meetings_users AS mu WHERE mu.meetings_id = m.meetings_id AND mu.last_active_time < m.created_at  AND mu.status = 1 ) AS unread_count from messages m where meetings_id = ? and id= ?",
+    [meetings_id, id]
+  );
 
   return rows[0];
 };

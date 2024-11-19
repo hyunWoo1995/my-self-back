@@ -83,7 +83,10 @@ module.exports = async (io) => {
           console.log("isAppliedisApplied", isApplied, type);
           if (isMember) {
             // socket.join(meetingRoom);
+
             // io.to(region_code).emit('enterRes')
+
+            await moimModel.modifyActiveTime({ meetings_id, users_id });
             io.to(region_code).emit("enterRes", { CODE: "EM000", DATA: "입장" });
           } else if (type === 3) {
             return io.to(region_code).emit("enterRes", { CODE: "EM001", DATA: "입장 신청이 필요합니다." });
@@ -108,7 +111,9 @@ module.exports = async (io) => {
 
         // Messages check
         if (messagesCache) {
-          messages = JSON.parse(messagesCache);
+          // messages = JSON.parse(messagesCache);
+          messages = await moimModel.getMessages({ meetings_id });
+          // console.log("messagesmessages", messages);
           console.log("Redis cache used for messages", messages);
         } else {
           messages = await moimModel.getMessages({ meetings_id });
@@ -228,22 +233,22 @@ module.exports = async (io) => {
     });
 
     // 메시지 수신 및 전파 (Send message to a meeting room)
-    socket.on("sendMessage", async (data) => {
-      console.log("sendMessage", data);
-      const meetingRoom = `${data.region_code}-${data.meetings_id}`;
+    socket.on("sendMessage", async ({ region_code, meetings_id, contents, users_id }) => {
+      const meetingRoom = `${region_code}-${meetings_id}`;
 
-      const res = await moimModel.sendMessage(data);
+      const res = await moimModel.sendMessage({ region_code, meetings_id, contents, users_id });
 
       if (res.affectedRows > 0) {
-        const message = await moimModel.getMessage(data.meetings_id, res.insertId);
+        await moimModel.modifyActiveTime({ meetings_id, users_id });
+        const message = await moimModel.getMessage(meetings_id, res.insertId);
         console.log("message", message);
         // await moimModel.updateRead({ id: res.insertId, meetings_id: data.meetings_id, users_id: data.users_id });
 
         io.to(meetingRoom).emit("receiveMessage", message);
 
-        const messages = await moimModel.getMessages({ meetings_id: data.meetings_id });
+        const messages = await moimModel.getMessages({ meetings_id: meetings_id });
 
-        setExAsync(`messages:${data.region_code}:${data.meetings_id}`, 3600, JSON.stringify(messages));
+        setExAsync(`messages:${region_code}:${meetings_id}`, 3600, JSON.stringify(messages));
       }
     });
 
