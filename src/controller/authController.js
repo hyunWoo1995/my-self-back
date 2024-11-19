@@ -70,16 +70,6 @@ const getProviderConfig = (provider) => {
   return config[provider];
 };
 
-const setCookie = (user) => {
-  // access token과 refresh token을 발급.
-  const accessToken = jwt.sign(user);
-  const refreshToken = jwt.refresh(user);
-  if(!(accessToken && refreshToken)){
-    console.log('토큰생성 오류')
-  }else{
-    return {accessToken,refreshToken}
-  }
-};
 // 이메일 인증 코드 가져오기
 const getEmailAuthCode = async (email) => {
   return new Promise((resolve, reject) => {
@@ -255,9 +245,11 @@ const authController = {
       if (!isPasswordValid) {
         return res.sendError(401,'계정 정보가 틀렸습니다. 확인바랍니다.')
       }
-      const { accessToken, refreshToken } = setCookie(user);
+      const accessToken = jwt.sign(user);
+      const refreshToken = jwt.refresh(user);
       res.sendSuccess('로그인 되었습니다.', {accessToken, refreshToken})
     } catch (error) {
+      console.log('error', error)
       res.sendError()
     }
   },
@@ -312,28 +304,10 @@ const authController = {
       if (!user) {
         res.redirect(`${process.env.FRONTEND_URL}/sign?email=${email}`);
       } else {
-        setCookie(res, user);
+        // const accessToken = jwt.sign(user);
+        // const refreshToken = jwt.refresh(user);
         res.redirect(`${process.env.FRONTEND_URL}`);
       }
-      // if (!user) {
-      //   const params = {
-      //     email,
-      //     hashedPassword: null,
-      //     provider,
-      //     provider_id: userData.id,
-      //     ip,
-      //   };
-      //   if (provider === "google") {
-      //     params.nickname = userData.name;
-      //   } else {
-      //     params.nickname = userData?.properties?.nickname || "사용자";
-      //   }
-      //   const insertId = await userModel.createUser(params);
-      //   user = await userModel.findByUser(insertId);
-      // }
-      // setCookie(res, user);
-
-      // res.redirect(`${process.env.FRONTEND_URL}/sign?email=${user.email}`);
     } catch (error) {
       res.sendError(500, `${provider} 로그인 중 서버 에러가 발생했습니다.`);
     }
