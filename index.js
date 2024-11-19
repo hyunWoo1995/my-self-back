@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-const responseHelper = require('./src/middlewares/responseHelper');
+const responseHelper = require("./src/middlewares/responseHelper");
 const http = require("http");
 const server = http.createServer(app);
 const swaggerUi = require("swagger-ui-express");
@@ -17,10 +17,19 @@ const socketIo = require("socket.io");
 const setupSocket = require("./socket");
 const path = require("path");
 const axios = require("axios");
-const cors = require('cors');
-
+const cors = require("cors");
 
 dotenv.config(); // .env가져오기
+
+app.use((req, res, next) => {
+  console.log("Request received:", req.path); // 요청이 여기에 도달하는지 확인
+  next();
+});
+
+app.use((req, res, next) => {
+  console.log("Middleware reached:", req.path);
+  next();
+});
 
 // 응답 헬퍼 미들웨어 추가
 app.use(responseHelper);
@@ -29,25 +38,26 @@ const io = socketIo(server);
 const PORT = process.env.PORT || 80;
 const publicDirectoryPath = path.join(__dirname, "./public");
 
-app.use(express.static(publicDirectoryPath));
-
 // 소켓 설정 초기화
 setupSocket(io);
 
 // Body Parser Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+responseHelper;
 
 // Swagger YAML 파일 경로 설정 및 미들웨어 추가
 const swaggerDocument = YAML.load("./src/swagger/swagger.yaml");
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-app.use(cors({
-  origin: "http://localhost:3000",  // 모든 도메인 허용
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],  // 허용할 HTTP 메서드
-  allowedHeaders: ['Content-Type', 'Authorization'], // 허용할 헤더
-  credentials: true // 쿠키 포함 등의 옵션을 허용할 경우(origin을 *처리했을경우 쿠키설정 안먹음.)
-}));
+app.use(
+  cors({
+    origin: "*", // 모든 도메인 허용
+    methods: ["GET", "POST", "PUT", "DELETE"], // 허용할 HTTP 메서드
+    allowedHeaders: ["Content-Type", "Authorization"], // 허용할 헤더
+    credentials: true, // 쿠키 포함 등의 옵션을 허용할 경우(origin을 *처리했을경우 쿠키설정 안먹음.)
+  })
+);
 
 // 토큰 체크하기!
 app.use((req, res, next) => {
@@ -81,6 +91,8 @@ app.use("/moim", moimRouter);
 app.get("/", (req, res) => {
   res.send("Hello, JWT!");
 });
+
+app.use(express.static(publicDirectoryPath));
 
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
