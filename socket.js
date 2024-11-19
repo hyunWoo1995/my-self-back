@@ -109,15 +109,16 @@ module.exports = async (io) => {
         // Messages check
         if (messagesCache) {
           messages = JSON.parse(messagesCache);
-          console.log("Redis cache used for messages");
+          console.log("Redis cache used for messages", messages);
         } else {
-          messages = await moimModel.getMessages(meetings_id);
-          if (messages.length > 0) {
+          messages = await moimModel.getMessages({ meetings_id });
+          console.log("messagesmessages", messages);
+          if (messages.lists.length > 0) {
             await setExAsync(`messages:${region_code}:${meetings_id}`, 3600, JSON.stringify(messages));
           }
           console.log("Database used for messages");
         }
-        io.to(meetingRoom).emit("messages", { list: messages, readId: null });
+        io.to(meetingRoom).emit("messages", { list: messages.lists, total: messages.total, readId: null });
 
         // io.to(meetingRoom).emit("meetingData", meetingData);
       } catch (error) {
@@ -240,7 +241,7 @@ module.exports = async (io) => {
 
         io.to(meetingRoom).emit("receiveMessage", message);
 
-        const messages = await moimModel.getMessages(data.meetings_id);
+        const messages = await moimModel.getMessages({ meetings_id: data.meetings_id });
 
         setExAsync(`messages:${data.region_code}:${data.meetings_id}`, 3600, JSON.stringify(messages));
       }

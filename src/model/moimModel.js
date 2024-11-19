@@ -29,7 +29,7 @@ exports.getMyList = async ({ users_id }) => {
 
 // 일반 모임 입장
 exports.generalMoimEnter = async ({ meetings_id, users_id }) => {
-  const [rows] = await db.query("insert meetings_users set meetings_id = ?, users_id = ?, status = 1", [data.meetings_id, data.users_id]);
+  const [rows] = await db.query("insert meetings_users set meetings_id = ?, users_id = ?, status = 1", [meetings_id, users_id]);
 
   return rows;
 };
@@ -75,9 +75,16 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
   //   console.error("entermeeting err", err);
   // }
 
-  const [existingData] = await db.query("select * from meetings_users where meetings_id = ?, users_id = ?", [meetings_id, users_id]);
+  const [existingData] = await db.query("select * from meetings_users where meetings_id = ? and users_id = ?", [meetings_id, users_id]);
 
-  const [rows] = await db.query(`${existingData ? "update" : "insert"} meetings_users set meetings_id = ?, users_id = ?, status = ?`, [meetings_id, users_id, type === 3 || creator ? 1 : 0]);
+  console.log("meetings_id, users_id, type", meetings_id, users_id, type, existingData);
+
+  const [rows] = await db.query(`${!!existingData.length ? "update" : "insert"} meetings_users set meetings_id = ?, users_id = ?, status = ?, last_active_time = ?`, [
+    meetings_id,
+    users_id,
+    type === 3 || creator ? 1 : 0,
+    new Date(),
+  ]);
 
   // if (existingData) {
   //   const [rows] = await db.query("update meetings_users set meetings_id = ?, users_id = ?, status = ?", [meetings_id, users_id, type === 3 || creator ? 1 : 0]);
@@ -98,12 +105,19 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
 //
 
 // 메세지 전체 조회
-exports.getMessages = async (meetings_id) => {
-  const [rows] = await db.query(
-    "SELECT m.*, COALESCE((SELECT COUNT(mu.users_id) FROM meetings_users mu WHERE mu.meetings_id = m.meetings_id AND (mu.last_read_message IS NULL OR mu.last_read_message < m.id)), 0) AS unread_count FROM messages m WHERE m.meetings_id = ? ORDER BY m.created_at desc limit 20;",
+exports.getMessages = async ({ meetings_id, length }) => {
+  const [lists] = await db.query("SELECT m.* FROM messages m WHERE m.meetings_id = ? ORDER BY m.created_at desc limit 20;", [meetings_id]);
+
+  const [[{ total_count }]] = await db.query(
+    `
+      SELECT COUNT(*) AS total_count
+  FROM messages 
+  WHERE meetings_id = ?;
+    `,
     [meetings_id]
   );
-  return rows;
+
+  return { lists, total: total_count };
 };
 
 // 메세지 단일 조회
@@ -115,10 +129,7 @@ exports.getMessage = async (meetings_id, id) => {
 
 // 메세지 더 받아오기
 exports.getMoreMessage = async ({ meetings_id, length }) => {
-  const [rows] = await db.query(
-    "SELECT m.*, COALESCE((SELECT COUNT(mu.users_id) FROM meetings_users mu WHERE mu.meetings_id = m.meetings_id AND (mu.last_read_message IS NULL OR mu.last_read_message < m.id)), 0) AS unread_count FROM messages m WHERE m.meetings_id = ? ORDER BY m.created_at desc limit ?, 20;",
-    [meetings_id, length]
-  );
+  const [rows] = await db.query("SELECT m.* FROM messages m WHERE m.meetings_id = ? ORDER BY m.created_at desc limit ?, 20;", [meetings_id, length]);
   return rows;
 };
 
