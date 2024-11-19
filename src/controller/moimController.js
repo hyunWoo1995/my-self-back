@@ -1,12 +1,17 @@
 const moimModel = require("../model/moimModel");
 
 exports.getCategories = async (req, res) => {
-  console.log("zxczxc!!!");
-  const result = await moimModel.getCategories();
-  console.log("res", result);
+  try {
+    console.log("zxczxc!!!");
+    console.log("req res", res);
+    const result = await moimModel.getCategories();
+    console.log("res", result);
 
-  // return { category1: rows.filter((v) => !v.parent_id), category2: rows.filter((v) => v.parent_id) };
-  res.status(200).json({ DATA: { category1: result.filter((v) => !v.parent_id), category2: result.filter((v) => v.parent_id) } });
+    return res.sendSuccess("요청 성공", { category1: result.filter((v) => !v.parent_id), category2: result.filter((v) => v.parent_id) });
+  } catch (err) {
+    console.error("카테고리 요청 실패", err);
+    return res.sendError(500, "요청 실패.");
+  }
 };
 
 exports.getMoreMessage = async (req, res) => {
