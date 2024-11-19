@@ -1,7 +1,7 @@
 const dotenv = require("dotenv");
 const { promisify } = require("util");
 const jwt = require("jsonwebtoken");
-const redisClient = require("./redis");
+const {redisClient} = require("./redis");
 
 dotenv.config(); // .env가져오기
 
@@ -16,10 +16,18 @@ module.exports = {
     const payload = {
       userId: user.id,
     };
-    return jwt.sign(payload, accessTokenSecret, {
+    const accessToken = jwt.sign(payload, accessTokenSecret, {
       algorithm: algorithmType, // 암호화 알고리즘
       expiresIn: accessTokenTime, // 유효기간
     });
+    redisClient.set(
+      `accessToken:${user.id}`,
+      accessToken,
+      "EX",
+      10
+      // parseInt(process.env.ACCESS_TOKEN_TIMER)
+    );
+    return accessToken;
   },
   verify: (token) => {
     // access token 검증
@@ -34,35 +42,34 @@ module.exports = {
       };
     }
   },
-  refresh: () => {
+  refresh: (user) => {
     // refresh token 발급
-    return jwt.sign({}, refreshTokenSecret, {
-      // refresh token은 payload 없이 발급
+    const payload = {
+      userId: user.id,
+    };
+    const refreshToken = jwt.sign(payload, refreshTokenSecret, {
       algorithm: algorithmType,
       expiresIn: refreshTokenTime,
     });
+    redisClient.set(
+      `refreshToken:${user.id}`,
+      refreshToken,
+      "EX",
+      parseInt(process.env.REFRESH_TOKEN_TIMER)
+    );
+    return refreshToken;
   },
-  refreshVerify: async (token, userId) => {
-    // refresh token 검증
-    /* redis 모듈은 기본적으로 promise를 반환하지 않으므로,
-       promisify를 이용하여 promise를 반환하게 해줍니다.*/
-    const getAsync = promisify(redisClient.get).bind(redisClient);
-
+  refreshVerify: async (token) => {
+    
+    let decoded = null;
     try {
-      const data = await getAsync(`refreshToken:${userId}`); // refresh token 가져오기
-      console.log('data', data)
-      if (token === data) {
-        try {
-          jwt.verify(token, refreshTokenSecret);
-          return true;
-        } catch (err) {
-          return false;
-        }
-      } else {
-        return false;
-      }
+      decoded = jwt.verify(token, refreshTokenSecret);
+      return { ok: true, ...decoded };
     } catch (err) {
-      return false;
+      return {
+        ok: false,
+        message: err.message,
+      };
     }
   },
 };

@@ -41,14 +41,12 @@ app.use(bodyParser.json());
 const swaggerDocument = YAML.load("./src/swagger/swagger.yaml");
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-app.use(
-  cors({
-    origin: "http://localhost:3000", // 모든 도메인 허용
-    methods: ["GET", "POST", "PUT", "DELETE"], // 허용할 HTTP 메서드
-    allowedHeaders: ["Content-Type", "Authorization"], // 허용할 헤더
-    credentials: true, // 쿠키 포함 등의 옵션을 허용할 경우(origin을 *처리했을경우 쿠키설정 안먹음.)
-  })
-);
+app.use(cors({
+  origin: "http://localhost:3000",  // 모든 도메인 허용
+  // methods: ['GET', 'POST', 'PUT', 'DELETE'],  // 허용할 HTTP 메서드
+  allowedHeaders: ['Content-Type', 'Authorization'], // 허용할 헤더
+  credentials: true // 쿠키 포함 등의 옵션을 허용할 경우(origin을 *처리했을경우 쿠키설정 안먹음.)
+}));
 
 // 토큰 체크하기!
 app.use((req, res, next) => {
