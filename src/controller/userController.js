@@ -6,23 +6,15 @@ dotenv.config(); // .env가져오기
 
 const userController = {
   async getUserMyInfo(req, res) {
-    const token = req.headers.authorization?.split(" ")[1];
+    const { userId } = req;
     try {
-      // JWT 토큰을 검증하고 사용자 정보 추출
-      const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-      const { userId } = decoded;
-      const accessToken = await getRedisData(`accessToken:${userId}`);
-
-      if (token !== accessToken) {
-        return res.sendError(400, '유효하지 않은 토큰입니다.')
-      }
       const userInfo = await userModel.findByUser(userId);
       if (!userInfo) {
         return res.sendError(404, '사용자 정보를 찾을 수 없습니다.');
       }
       return res.sendSuccess('User info', userInfo);
     } catch (err) {
-      return res.sendError(401,'유효하지 않은 토큰입니다.');
+      return res.sendError(500);
     }
   },
   async getUserList(req, res) {

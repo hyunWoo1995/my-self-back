@@ -1,12 +1,15 @@
 const { verify } = require("../utils/jwt-util");
+const { getRedisData } = require("../utils/redis");
 
-const authJWT = (req, res, next) => {
+const authJWT = async (req, res, next) => {
   if (req.headers.authorization) {
     const token = req.headers.authorization.split("Bearer ")[1]; // header에서 access token을 가져옵니다.
     const result = verify(token); // token을 검증합니다.
-    if (result.ok) {
+    const { userId } = result;
+    const accessToken = await getRedisData(`accessToken:${userId}`);
+    if (accessToken) {
       // token이 검증되었으면 req에 값을 세팅하고, 다음 콜백함수로 갑니다.
-      req.id = result.id;
+      req.userId = result.userId;
       req.role = result.role;
       next();
     } else {

@@ -1,6 +1,6 @@
 const jwt = require("../utils/jwt-util");
 const bcrypt = require("bcryptjs");
-const { redisClient } = require("../utils/redis");
+const { redisClient, getRedisData } = require("../utils/redis");
 const userModel = require("../model/userModel");
 const interestModel = require("../model/interestModel");
 const axios = require("axios");
@@ -70,37 +70,15 @@ const getProviderConfig = (provider) => {
   return config[provider];
 };
 
-const setCookie = (res, user) => {
+const setCookie = (user) => {
   // access token과 refresh token을 발급.
   const accessToken = jwt.sign(user);
-  const refreshToken = jwt.refresh();
-  // redis에 access,refresh token두개다 등록.
-  redisClient.set(
-    `accessToken:${user.id}`,
-    accessToken,
-    "EX",
-    parseInt(process.env.ACCESS_TOKEN_TIMER)
-  );
-  redisClient.set(
-    `refreshToken:${user.id}`,
-    refreshToken,
-    "EX",
-    parseInt(process.env.REFRESH_TOKEN_TIMER)
-  );
-  
-  // 브라우저cookie에다 넣어줌.
-  res.cookie("accessToken", accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',  // production에서는 secure: true
-    sameSite: 'Lax',  // 크로스 도메인에서 쿠키 전송 가능
-    maxAge: parseInt(process.env.ACCESS_TOKEN_TIMER) * 1000, // 60분
-  });
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',  // production에서는 secure: true
-    sameSite: 'Lax',  // 크로스 도메인에서 쿠키 전송 가능
-    maxAge: parseInt(process.env.REFRESH_TOKEN_TIMER) * 1000, // 7일
-  });
+  const refreshToken = jwt.refresh(user);
+  if(!(accessToken && refreshToken)){
+    console.log('토큰생성 오류')
+  }else{
+    return {accessToken,refreshToken}
+  }
 };
 // 이메일 인증 코드 가져오기
 const getEmailAuthCode = async (email) => {
@@ -141,22 +119,28 @@ function validateBirthdate(birthdate) {
 const authController = {
   // 1. refreshToken 검증
   async refreshToken(req, res) {
-    const { refreshToken } = req.cookies;
-
+    const { refreshToken } = req.body;
     if (!refreshToken) {
-      return res.status(401).json({ message: '리프레시 토큰이 제공되지 않았습니다.' });
+      return res.sendError(401, '리프레시 토큰이 제공되지 않았습니다.');
     }
 
     try {
-      const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+      const decoded = await jwt.refreshVerify(refreshToken);
+      if(decoded){
+        const refreshToken = await getRedisData(`refreshToken:${decoded.userId}`);
+        if(refreshToken){
+          const newAccessToken = jwt.sign({ id: decoded.userId });
+          // 2. refresh token이 유효하면 새로운 access token 발급
+          return res.sendSuccess('요청 성공', { newAccessToken })
+        }else{
+          return res.sendError(403,'유효하지 않은 리프레시 토큰입니다.')  
+        }
+      }else{
+        return res.sendError(403,'유효하지 않은 리프레시 토큰입니다.')  
+      }
 
-      // 2. refresh token이 유효하면 새로운 access token 발급
-      const newAccessToken = jwt.sign({ id: decoded.userId });
-
-      return res.sendSuccess('요청 성공', { accessToken: newAccessToken })
     } catch (error) {
-      console.error('리프레시 토큰 갱신 실패', error);
-      return res.sendError(403,'유효하지 않은 리프레시 토큰입니다.')
+      return res.sendError()
     }
   },
   async requestEmail(req, res) {
@@ -271,9 +255,7 @@ const authController = {
       if (!isPasswordValid) {
         return res.sendError(401,'계정 정보가 틀렸습니다. 확인바랍니다.')
       }
-      setCookie(res, user);
-      const accessToken = jwt.sign(user);
-      const refreshToken = jwt.refresh();
+      const { accessToken, refreshToken } = setCookie(user);
       res.sendSuccess('로그인 되었습니다.', {accessToken, refreshToken})
     } catch (error) {
       res.sendError()
