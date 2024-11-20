@@ -112,8 +112,8 @@ module.exports = async (io) => {
 
         // Messages check
         if (messagesCache) {
-          // messages = JSON.parse(messagesCache);
-          messages = await moimModel.getMessages({ meetings_id });
+          messages = JSON.parse(messagesCache);
+          // messages = await moimModel.getMessages({ meetings_id });
           //
         } else {
           messages = await moimModel.getMessages({ meetings_id });
@@ -129,7 +129,6 @@ module.exports = async (io) => {
     };
 
     socket.emit("message", socket.id);
-    const id = 1;
     // 나의 모임 목록
     socket.on("userData", async (data) => {
       pubClient.get(`myList:${data.id}`, async (err, result) => {
