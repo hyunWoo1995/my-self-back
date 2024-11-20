@@ -14,7 +14,6 @@ const pool = mysql.createConnection({
 
 pool.connect((err) => {
   if (err) {
-    console.log("mysql err", err);
   } else {
   }
 });

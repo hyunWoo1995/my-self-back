@@ -17,22 +17,20 @@ module.exports = async (io) => {
 
   Promise.all([pubClient.connect(), subClient.connect()]);
 
-  pubClient.on("error", (err) => {
-    console.error("pubClient Error", err);
-  });
+  pubClient.on("error", (err) => {});
 
   // getAsync(`accessToken:1`, (err, result) => {
-  //   console.log("result", result);
+  //
   // });
 
   io.adapter(createAdapter(pubClient, subClient));
 
   // Subscribe to Redis channels for region updates
   // subClient.on("message", (channel, message) => {
-  //   console.log("ccccc", channel, message);
+  //
   //   try {
   //     const parsedMessage = JSON.parse(message);
-  //     console.log("channel", channel, parsedMessage);
+  //
 
   //     // Check message type and emit to clients
   //     if (parsedMessage.type === "listUpdate") {
@@ -41,7 +39,7 @@ module.exports = async (io) => {
   //       io.to(channel).emit("receiveMessage", parsedMessage.data);
   //     }
   //   } catch (error) {
-  //     console.error(`Error parsing message from channel ${channel}:`, error);
+  //
   //   }
   // });
 
@@ -49,6 +47,12 @@ module.exports = async (io) => {
     const enterMeeting = async ({ region_code, meetings_id, users_id, type }) => {
       const meetingRoom = `${region_code}-${meetings_id}`;
       socket.join(meetingRoom);
+      socket.data.userId = users_id;
+
+      // 현재 room에 접속한 사용자 목록 요청
+      const usersInRoom = getUsersInRoom(meetingRoom);
+      console.log("usersInRoom", usersInRoom);
+      io.to(meetingRoom).emit("updateRoomUsers", usersInRoom);
 
       try {
         const [myListCache, messagesCache, meetingListCache, meetingDataCache] = await Promise.all([
@@ -63,11 +67,9 @@ module.exports = async (io) => {
         // Meeting data check
         if (meetingDataCache) {
           meetingData = JSON.parse(meetingDataCache);
-          console.log("Redis cache used for meeting data");
         } else {
           meetingData = await moimModel.getMeetingData({ meetings_id });
           setExAsync(`meetingData:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingData));
-          console.log("Database used for meeting data");
         }
 
         io.to(meetingRoom).emit("meetingData", meetingData);
@@ -76,11 +78,11 @@ module.exports = async (io) => {
         if (myListCache) {
           const myList = JSON.parse(myListCache);
           const target = myList.find((v) => v.meetings_id === meetings_id && v.users_id === users_id);
-          console.log("target", myList, target);
+
           const isApplied = target && Object.keys(target).length > 0;
           const isMember = target?.status === 1;
+          console.log("isss", isMember, type, region_code, meetings_id, users_id);
 
-          console.log("isAppliedisApplied", isApplied, type);
           if (isMember) {
             // socket.join(meetingRoom);
 
@@ -94,7 +96,6 @@ module.exports = async (io) => {
             if (isApplied) {
               return io.to(region_code).emit("enterRes", { CODE: "EM002", DATA: "입장 신청이 완료되었습니다." });
             } else {
-              console.log("enterResenterResenterRes");
               return io.to(region_code).emit("enterRes", { CODE: "EM001", DATA: "입장 신청이 필요합니다." });
             }
           }
@@ -113,34 +114,26 @@ module.exports = async (io) => {
         if (messagesCache) {
           // messages = JSON.parse(messagesCache);
           messages = await moimModel.getMessages({ meetings_id });
-          // console.log("messagesmessages", messages);
-          console.log("Redis cache used for messages", messages);
+          //
         } else {
           messages = await moimModel.getMessages({ meetings_id });
-          console.log("messagesmessages", messages);
+
           if (messages.lists.length > 0) {
             await setExAsync(`messages:${region_code}:${meetings_id}`, 3600, JSON.stringify(messages));
           }
-          console.log("Database used for messages");
         }
         io.to(meetingRoom).emit("messages", { list: messages.lists, total: messages.total, readId: null });
 
         // io.to(meetingRoom).emit("meetingData", meetingData);
-      } catch (error) {
-        console.error("Error in enterMeeting:", error);
-      }
+      } catch (error) {}
     };
 
-    console.log("connection", socket.id);
     socket.emit("message", socket.id);
     const id = 1;
     // 나의 모임 목록
     socket.on("userData", async (data) => {
-      console.log("dd", data);
-
       pubClient.get(`myList:${data.id}`, async (err, result) => {
         if (result) {
-          console.log("mylist redis!!");
           io.to(socket.id).emit("myList", JSON.parse(result));
         } else {
           const res = await moimModel.getMyList({ users_id: data.id });
@@ -158,11 +151,8 @@ module.exports = async (io) => {
       // Check Redis cache for meeting list
       pubClient.get(`meetingList:${region_code}`, async (err, result) => {
         if (result) {
-          console.log("레디스!");
           io.to(region_code).emit("list", JSON.parse(result));
         } else {
-          console.log("데이터베이스!");
-
           const res = await moimModel.getMeetingList({ region_code: region_code });
           pubClient.setEx(`meetingList:${region_code}`, 3600, JSON.stringify(res)); // Cache for 1 hour
 
@@ -212,6 +202,12 @@ module.exports = async (io) => {
     // 모임 입장 (Enter a meeting)
     socket.on("enterMeeting", enterMeeting);
 
+    // room에서 나가기
+    socket.on("leaveMeeting", (roomId) => {
+      socket.leave(roomId);
+      console.log(`${socket.data.userId}가 ${roomId}에서 나갔습니다.`);
+    });
+
     // 모임 입장 신청
     socket.on("joinMeeting", async ({ region_code, users_id, meetings_id, type }) => {
       // if (type === 3) {
@@ -239,9 +235,13 @@ module.exports = async (io) => {
       const res = await moimModel.sendMessage({ region_code, meetings_id, contents, users_id });
 
       if (res.affectedRows > 0) {
-        await moimModel.modifyActiveTime({ meetings_id, users_id });
-        const message = await moimModel.getMessage(meetings_id, res.insertId);
-        console.log("message", message);
+        moimModel.modifyActiveTime({ meetings_id, users_id });
+
+        const usersInRoom = getUsersInRoom(meetingRoom);
+        console.log("send usersInRoom", usersInRoom);
+
+        const message = await moimModel.getMessage(meetings_id, res.insertId, usersInRoom);
+
         // await moimModel.updateRead({ id: res.insertId, meetings_id: data.meetings_id, users_id: data.users_id });
 
         io.to(meetingRoom).emit("receiveMessage", message);
@@ -257,8 +257,15 @@ module.exports = async (io) => {
     // });
 
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)
-    socket.on("disconnect", () => {
-      console.log("disconnect", socket.id);
-    });
+    socket.on("disconnect", () => {});
   });
+
+  // 특정 room에 접속한 사용자 목록 가져오기
+  function getUsersInRoom(roomId) {
+    const clients = io.sockets.adapter.rooms.get(roomId) || new Set();
+    return Array.from(clients).map((socketId) => {
+      const socket = io.sockets.sockets.get(socketId);
+      return socket?.data.userId || null;
+    });
+  }
 };
