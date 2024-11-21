@@ -45,6 +45,7 @@ module.exports = async (io) => {
 
   io.on("connection", (socket) => {
     const enterMeeting = async ({ region_code, meetings_id, users_id, type }) => {
+      console.log("region_code, meetings_id, users_id, type ", region_code, meetings_id, typeof users_id, type);
       const meetingRoom = `${region_code}-${meetings_id}`;
       socket.join(meetingRoom);
       socket.data.userId = users_id;
@@ -82,6 +83,29 @@ module.exports = async (io) => {
           const isApplied = target && Object.keys(target).length > 0;
           const isMember = target?.status === 1;
           console.log("isss", isMember, type, region_code, meetings_id, users_id);
+
+          if (isMember) {
+            // socket.join(meetingRoom);
+
+            // io.to(region_code).emit('enterRes')
+
+            await moimModel.modifyActiveTime({ meetings_id, users_id });
+            io.to(region_code).emit("enterRes", { CODE: "EM000", DATA: "입장" });
+          } else if (type === 3) {
+            return io.to(region_code).emit("enterRes", { CODE: "EM001", DATA: "입장 신청이 필요합니다." });
+          } else if (type === 4) {
+            if (isApplied) {
+              return io.to(region_code).emit("enterRes", { CODE: "EM002", DATA: "입장 신청이 완료되었습니다." });
+            } else {
+              return io.to(region_code).emit("enterRes", { CODE: "EM001", DATA: "입장 신청이 필요합니다." });
+            }
+          }
+        } else {
+          const myList = await moimModel.getMyList({ users_id: users_id });
+          const target = myList.find((v) => v.meetings_id === meetings_id && v.users_id === users_id);
+
+          const isApplied = target && Object.keys(target).length > 0;
+          const isMember = target?.status === 1;
 
           if (isMember) {
             // socket.join(meetingRoom);
