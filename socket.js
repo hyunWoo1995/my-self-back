@@ -123,6 +123,8 @@ module.exports = async (io) => {
               return io.to(region_code).emit("enterRes", { CODE: "EM001", DATA: "입장 신청이 필요합니다." });
             }
           }
+
+          pubClient.setEx(`myList:${users_id}`, 3600, JSON.stringify(myList));
         }
 
         // Meeting list check
