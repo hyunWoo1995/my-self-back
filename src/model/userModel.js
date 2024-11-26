@@ -51,6 +51,14 @@ const User = {
     return rows[0]; // 사용자 존재하면 첫 번째 row 반환
   },
 
+  // 닉네임으로 사용자 찾기
+  async findByNickName(nickname) {
+    const [rows] = await db.query("SELECT * FROM users WHERE nickname = ?", [
+      nickname,
+    ]);
+    return rows[0]; // 사용자 존재하면 첫 번째 row 반환
+  },
+
   // 회원정보 가져오기
   async findByUser(id) {
     const [rows] = await db.query("SELECT * FROM users WHERE id = ?", [id]);
