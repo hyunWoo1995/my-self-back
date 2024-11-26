@@ -391,7 +391,7 @@ module.exports = async (io) => {
 
       if (res.affectedRows > 0) {
         // moimModel.modifyActiveTime({ meetings_id, users_id });
-        await moimModel.modifyActiveTime({ meetings_id, users_id });
+        // await moimModel.modifyActiveTime({ meetings_id, users_id });
 
         const meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
 
@@ -401,6 +401,7 @@ module.exports = async (io) => {
 
         const usersInRoom = getUsersInRoom(meetingRoom);
         console.log("send usersInRoom", usersInRoom);
+        await moimModel.modifyActiveTime({ meetings_id, usersInRoom });
 
         const message = await moimModel.getMessage(meetings_id, res.insertId, usersInRoom);
 
