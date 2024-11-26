@@ -417,9 +417,9 @@ module.exports = async (io) => {
       }
     });
 
-    // socket.on("readMessage", async (data) => {
-    //   await moimModel.updateRead(data);
-    // });
+    socket.on("readMessage", async ({ meetings_id, users_id }) => {
+      await moimModel.modifyActiveTime({ meetings_id, users_id });
+    });
 
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)
     socket.on("disconnect", () => {});
