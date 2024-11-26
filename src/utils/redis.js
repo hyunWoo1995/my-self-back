@@ -8,6 +8,9 @@ const redisClient = redis.createClient({
   legacyMode: true, // 반드시 설정 !!
 });
 
+redisClient.connect().then(); // redis v4 연결 (비동기)
+// const redisCli = redisClient.v4;
+
 redisClient.on("connect", () => {
   console.info("Redis connected!");
 });
@@ -15,8 +18,6 @@ redisClient.on("connect", () => {
 redisClient.on("error", (err) => {
   console.error("Redis Client Error", err);
 });
-redisClient.connect().then(); // redis v4 연결 (비동기)
-// const redisCli = redisClient.v4;
 
 // Redis에서 값 가져오기 (Promise 방식)
 async function getRedisData(key) {
