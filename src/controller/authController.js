@@ -186,15 +186,19 @@ const authController = {
     try {
       const ip = req.ip || req.connection.remoteAddress;
       // 이메일 중복 확인
-      const existingUser = await userModel.findByEmail(email);
+      let existingUser = await userModel.findByEmail(email);
       if (existingUser) {
-        return res.sendError(400, '중복된 계정입니다.')
+        return res.sendError(400, '중복된 이메일 입니다.')
+      }
+      existingUser = await userModel.findByNickName(email);
+      if (existingUser) {
+        return res.sendError(400, '중복된 닉네임 입니다.')
       }
       if (password !== passwordCheck) {
         return res.sendError(400, '패스워드 일치하지 않습니다.')
       }
       const gender = getGender(birthdate);
-
+      
       if (!gender) {
         return res.sendError(400, '주민등록번호 잘못입력하셨습니다.')
       }
