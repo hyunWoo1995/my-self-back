@@ -105,12 +105,13 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
 
 // 모임 - 유저 active time 변경
 exports.modifyActiveTime = async ({ meetings_id, users_id }) => {
-  const [row] = await db.query("update meetings_users set last_active_time = ? where meetings_id = ? and users_id = ?", [new Date(), meetings_id, users_id]);
+  const [row] = await db.query("update meetings_users set last_active_time = ? where meetings_id = ? and users_id in (?)", [new Date(), meetings_id, users_id]);
 
   console.log("rrrr", row);
 
   return row;
 };
+
 //
 
 // 메세지 전체 조회
@@ -143,9 +144,9 @@ exports.getMessages = async ({ meetings_id, length }) => {
 exports.getMessage = async (meetings_id, id, usersInRoom) => {
   const [rows] = await db.query("select m.* from messages m where meetings_id = ? and id= ?", [meetings_id, id]);
 
-  const [meetingsUsers] = await db.query("select * from meetings_users where meetings_id = ? and status = 1", [meetings_id]);
+  // const [meetingsUsers] = await db.query("select * from meetings_users where meetings_id = ? and status = 1", [meetings_id]);
 
-  const message = { ...rows[0], unReadCount: meetingsUsers.length - usersInRoom.length };
+  const message = rows[0];
 
   return message;
 };
@@ -158,9 +159,7 @@ exports.getMoreMessage = async ({ meetings_id, length }) => {
 
 // 메세지 보내기
 exports.sendMessage = async (data) => {
-  console.log("nnn", new Date());
-
-  const [rows] = await db.query("insert messages set meetings_id = ?, created_at = ?, contents = ?, users_id = ?", [data.meetings_id, new Date(), data.contents, data.users_id]);
+  const [rows] = await db.query("insert messages set meetings_id = ?, created_at = ?, contents = ?, users_id = ?, users = ?", [data.meetings_id, new Date(), data.contents, data.users_id, data.users]);
 
   return rows;
 };

@@ -230,16 +230,6 @@ module.exports = async (io) => {
         messages = await moimModel.getMessages({ meetings_id });
         console.log("messagesmessages", messages.lists);
 
-        const parseList = messages.lists.reduce((result, cur) => {
-          // 메세지가 만들어진 시간이랑 유저들의 활동 시간을 필터
-          const unReadCount = meetingsUsers.length - meetingsUsers.filter((v) => isAfterDate(v.last_active_time, cur.created_at)).length;
-          result.push({ ...cur, unReadCount });
-
-          return result;
-        }, []);
-
-        console.log("parseList", parseList);
-
         if (messages.lists.length > 0) {
           await setExAsync(`messages:${region_code}:${meetings_id}`, 3600, JSON.stringify(messages));
         }
@@ -248,7 +238,16 @@ module.exports = async (io) => {
           JSON.stringify({
             room: meetingRoom,
             event: "messages",
-            data: { list: parseList, total: messages.total, readId: null },
+            data: { list: messages.lists, total: messages.total, readId: null },
+          })
+        );
+
+        pubClient.publish(
+          "meetingRoom",
+          JSON.stringify({
+            room: meetingRoom,
+            event: "meetingActive",
+            data: meetingsUsers,
           })
         );
       } catch (error) {}
@@ -387,27 +386,46 @@ module.exports = async (io) => {
     socket.on("sendMessage", async ({ region_code, meetings_id, contents, users_id }) => {
       const meetingRoom = `${region_code}-${meetings_id}`;
 
-      const res = await moimModel.sendMessage({ region_code, meetings_id, contents, users_id });
+      const meetingsUsers = await getAsync(`meetingsUsers:${region_code}:${meetings_id}`);
+      console.log("meetingmeetingmeeting", meetingsUsers);
+
+      const res = await moimModel.sendMessage({ region_code, meetings_id, contents, users_id, users: JSON.parse(meetingsUsers).map((v) => v.users_id) });
 
       if (res.affectedRows > 0) {
         // moimModel.modifyActiveTime({ meetings_id, users_id });
         // await moimModel.modifyActiveTime({ meetings_id, users_id });
 
-        const meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
-
-        console.log("meetingsUsers", meetingsUsers);
-
-        await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
-
         const usersInRoom = getUsersInRoom(meetingRoom);
         console.log("send usersInRoom", usersInRoom);
         await moimModel.modifyActiveTime({ meetings_id, usersInRoom });
+
+        const meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
+
+        await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
 
         const message = await moimModel.getMessage(meetings_id, res.insertId, usersInRoom);
 
         // await moimModel.updateRead({ id: res.insertId, meetings_id: data.meetings_id, users_id: data.users_id });
 
-        io.to(meetingRoom).emit("receiveMessage", message);
+        pubClient.publish(
+          "meetingRoom",
+          JSON.stringify({
+            room: meetingRoom,
+            event: "receiveMessage",
+            data: message,
+          })
+        );
+
+        pubClient.publish(
+          "meetingRoom",
+          JSON.stringify({
+            room: meetingRoom,
+            event: "meetingActive",
+            data: meetingsUsers,
+          })
+        );
+
+        // io.to(meetingRoom).emit("receiveMessage", message);
         // 현재 room에 접속한 사용자 목록 요청
 
         const messages = await moimModel.getMessages({ meetings_id: meetings_id });
