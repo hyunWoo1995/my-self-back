@@ -82,10 +82,22 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
 
   if (existingData.length > 0) {
     // Update 쿼리: 특정 users_id만 업데이트
-    await db.query("UPDATE meetings_users SET status = ?, last_active_time = ? WHERE meetings_id = ? AND users_id = ?", [type === 3 || creator ? 1 : 0, new Date(), meetings_id, users_id]);
+    const [rows] = await db.query("UPDATE meetings_users SET status = ?, last_active_time = ? WHERE meetings_id = ? AND users_id = ?", [
+      type === 3 || creator ? 1 : 0,
+      new Date(),
+      meetings_id,
+      users_id,
+    ]);
+    return rows;
   } else {
     // Insert 쿼리
-    await db.query("INSERT INTO meetings_users (meetings_id, users_id, status, last_active_time) VALUES (?, ?, ?, ?)", [meetings_id, users_id, type === 3 || creator ? 1 : 0, new Date()]);
+    const [rows] = await db.query("INSERT INTO meetings_users (meetings_id, users_id, status, last_active_time) VALUES (?, ?, ?, ?)", [
+      meetings_id,
+      users_id,
+      type === 3 || creator ? 1 : 0,
+      new Date(),
+    ]);
+    return rows;
   }
 
   // if (existingData) {
@@ -101,7 +113,6 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
   //   const [rows] = await db.query("insert meetings_users set meetings_id = ?, users_id = ?, status = 0", [meetings_id, users_id]);
   //   return rows;
   // }
-  return rows;
 };
 
 // 모임 - 유저 active time 변경
