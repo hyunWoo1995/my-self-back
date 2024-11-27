@@ -241,7 +241,7 @@ const authController = {
 
   // moimmoim 회원로그인
   async confirmNickname(req, res) {
-    const { nickname } = req.body;
+    const { nickname } = req.query;
     try {
       const existingUser = await userModel.findByNickname(nickname);
       if (existingUser) {
