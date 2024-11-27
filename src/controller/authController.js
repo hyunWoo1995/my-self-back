@@ -136,9 +136,13 @@ const authController = {
   async requestEmail(req, res) {
     const { email } = req.body;
     if (!email)
-      
       return res.sendError(400,"이메일이 필요합니다.")
     try {
+      // 이메일 중복 확인
+      let existingUser = await userModel.findByEmail(email);
+      if (existingUser) {
+        return res.sendError(400, '중복된 이메일 입니다.')
+      }
       const authCode = Math.floor(100000 + Math.random() * 900000).toString();
 
       redisClient.set(`emailAuthCode:${email}`, authCode, "EX", 60 * 3);
@@ -190,7 +194,7 @@ const authController = {
       if (existingUser) {
         return res.sendError(400, '중복된 이메일 입니다.')
       }
-      existingUser = await userModel.findByNickName(email);
+      existingUser = await userModel.findByNickname(nickname);
       if (existingUser) {
         return res.sendError(400, '중복된 닉네임 입니다.')
       }
@@ -236,6 +240,18 @@ const authController = {
   },
 
   // moimmoim 회원로그인
+  async confirmNickname(req, res) {
+    const { nickname } = req.query;
+    try {
+      const existingUser = await userModel.findByNickname(nickname);
+      if (existingUser) {
+        return res.sendError(400, '중복된 닉네임 입니다.')
+      }
+      res.sendSuccess('닉네임 사용가능')
+    } catch (error) {
+      res.sendError()
+    }
+  },
   async login(req, res) {
     const { email, password } = req.body;
     try {
