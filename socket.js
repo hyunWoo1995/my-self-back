@@ -32,6 +32,16 @@ module.exports = async (io) => {
     console.error("Redis SubClient Error:", err);
   });
 
+  subClient.v4.subscribe("message", (message) => {
+    console.log("socket.id", message);
+    try {
+      const parsedMessage = JSON.parse(message);
+      io.to(parsedMessage.room).emit(parsedMessage.event, parsedMessage.data);
+    } catch (error) {
+      console.error("Error parsing Redis message:", error);
+    }
+  });
+
   subClient.v4.subscribe("region_code", (message) => {
     console.log("Received message from channel 'redistest':", message);
     try {
@@ -73,16 +83,6 @@ module.exports = async (io) => {
   // });
 
   io.on("connection", (socket) => {
-    subClient.v4.subscribe(socket.id, (message) => {
-      console.log("socket.id", message);
-      try {
-        const parsedMessage = JSON.parse(message);
-        io.to(parsedMessage.room).emit(parsedMessage.event, parsedMessage.data);
-      } catch (error) {
-        console.error("Error parsing Redis message:", error);
-      }
-    });
-
     socket.emit("message", socket.id);
 
     const enterMeeting = async ({ region_code, meetings_id, users_id, type }) => {
@@ -153,7 +153,7 @@ module.exports = async (io) => {
           await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
 
           await pubClient.publish(
-            scoet.id,
+            "message",
             JSON.stringify({
               room: socket.id,
               event: "enterRes",
@@ -162,7 +162,7 @@ module.exports = async (io) => {
           );
         } else if (type === 3) {
           return pubClient.publish(
-            socket.id,
+            "message",
             JSON.stringify({
               room: socket.id,
               event: "enterRes",
@@ -172,7 +172,7 @@ module.exports = async (io) => {
         } else if (type === 4) {
           if (isApplied) {
             return pubClient.publish(
-              socket.id,
+              "message",
               JSON.stringify({
                 room: socket.id,
                 event: "enterRes",
@@ -181,7 +181,7 @@ module.exports = async (io) => {
             );
           } else {
             return pubClient.publish(
-              socket.id,
+              "message",
               JSON.stringify({
                 room: socket.id,
                 event: "enterRes",
