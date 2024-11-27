@@ -378,7 +378,30 @@ module.exports = async (io) => {
       // }
       await moimModel.enterMeeting({ meetings_id, users_id, type });
 
+      const meetingList = await moimModel.getMeetingList({ region_code });
+      const meetingData = await moimModel.getMeetingData({ meetings_id });
       const res = await moimModel.getMyList({ users_id });
+
+      pubClient.publish(
+        "region_code",
+        JSON.stringify({
+          room: region_code,
+          event: "meetingData",
+          data: meetingData,
+        })
+      );
+
+      pubClient.publish(
+        "region_code",
+        JSON.stringify({
+          room: region_code,
+          event: "meetingList",
+          data: meetingList,
+        })
+      );
+
+      await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(meetingList));
+      pubClient.setEx(`meetingData:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingData));
       pubClient.setEx(`myList:${users_id}`, 3600, JSON.stringify(res));
 
       await enterMeeting({ meetings_id, users_id, region_code, type });
@@ -456,6 +479,39 @@ module.exports = async (io) => {
 
     socket.on("readMessage", async ({ meetings_id, users_id }) => {
       await moimModel.modifyActiveTime({ meetings_id, users_id });
+    });
+
+    let typyingUsers;
+
+    socket.on("typying", async ({ region_code, meetings_id, users_id }) => {
+      if (typyingUsers?.[users_id]) return;
+      console.log("typying users_id", users_id);
+
+      console.log("zxczxc", typyingUsers?.[users_id]);
+
+      const meetingRoom = `${region_code}-${meetings_id}`;
+      typyingUsers = { ...typyingUsers, [users_id]: true };
+
+      await pubClient.publish(
+        "meetingRoom",
+        JSON.stringify({
+          room: meetingRoom,
+          event: "userTypying",
+          data: typyingUsers,
+        })
+      );
+
+      setTimeout(async () => {
+        delete typyingUsers?.[users_id];
+        await pubClient.publish(
+          "meetingRoom",
+          JSON.stringify({
+            room: meetingRoom,
+            event: "userTypying",
+            data: typyingUsers,
+          })
+        );
+      }, 3000);
     });
 
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)
