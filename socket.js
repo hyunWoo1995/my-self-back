@@ -73,6 +73,16 @@ module.exports = async (io) => {
   // });
 
   io.on("connection", (socket) => {
+    subClient.v4.subscribe(socket.id, (message) => {
+      console.log("socket.id", message);
+      try {
+        const parsedMessage = JSON.parse(message);
+        io.to(parsedMessage.room).emit(parsedMessage.event, parsedMessage.data);
+      } catch (error) {
+        console.error("Error parsing Redis message:", error);
+      }
+    });
+
     socket.emit("message", socket.id);
 
     const enterMeeting = async ({ region_code, meetings_id, users_id, type }) => {
@@ -143,18 +153,18 @@ module.exports = async (io) => {
           await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
 
           await pubClient.publish(
-            "meetingRoom",
+            scoet.id,
             JSON.stringify({
-              room: meetingRoom,
+              room: socket.id,
               event: "enterRes",
               data: { CODE: "EM000", DATA: "입장" },
             })
           );
         } else if (type === 3) {
           return pubClient.publish(
-            "meetingRoom",
+            socket.id,
             JSON.stringify({
-              room: meetingRoom,
+              room: socket.id,
               event: "enterRes",
               data: { CODE: "EM001", DATA: "입장 신청이 필요합니다." },
             })
@@ -162,18 +172,18 @@ module.exports = async (io) => {
         } else if (type === 4) {
           if (isApplied) {
             return pubClient.publish(
-              "meetingRoom",
+              socket.id,
               JSON.stringify({
-                room: meetingRoom,
+                room: socket.id,
                 event: "enterRes",
                 data: { CODE: "EM002", DATA: "입장 신청이 완료되었습니다." },
               })
             );
           } else {
             return pubClient.publish(
-              "meetingRoom",
+              socket.id,
               JSON.stringify({
-                room: meetingRoom,
+                room: socket.id,
                 event: "enterRes",
                 data: { CODE: "EM001", DATA: "입장 신청이 필요합니다." },
               })
@@ -208,7 +218,7 @@ module.exports = async (io) => {
         // }
 
         console.log("meetingsUsers", meetingsUsers);
-
+        s;
         // Messages check
         // if (messagesCache) {
         //   messages = JSON.parse(messagesCache);
