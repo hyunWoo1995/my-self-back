@@ -7,6 +7,8 @@ router.post("/register", authController.register);
 // 로그인
 router.post("/login", authController.login);
 
+router.get("/confirmNickname", authController.confirmNickname);
+
 router.post("/refreshToken", authController.refreshToken);
 
 router.post("/requestEmail", authController.requestEmail);
