@@ -78,14 +78,15 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
   //
   // }
 
-  const [existingData] = await db.query("select * from meetings_users where meetings_id = ? and users_id = ?", [meetings_id, users_id]);
+  const [existingData] = await db.query("SELECT * FROM meetings_users WHERE meetings_id = ? AND users_id = ?", [meetings_id, users_id]);
 
-  const [rows] = await db.query(`${!!existingData.length ? "update" : "insert"} meetings_users set meetings_id = ?, users_id = ?, status = ?, last_active_time = ?`, [
-    meetings_id,
-    users_id,
-    type === 3 || creator ? 1 : 0,
-    new Date(),
-  ]);
+  if (existingData.length > 0) {
+    // Update 쿼리: 특정 users_id만 업데이트
+    await db.query("UPDATE meetings_users SET status = ?, last_active_time = ? WHERE meetings_id = ? AND users_id = ?", [type === 3 || creator ? 1 : 0, new Date(), meetings_id, users_id]);
+  } else {
+    // Insert 쿼리
+    await db.query("INSERT INTO meetings_users (meetings_id, users_id, status, last_active_time) VALUES (?, ?, ?, ?)", [meetings_id, users_id, type === 3 || creator ? 1 : 0, new Date()]);
+  }
 
   // if (existingData) {
   //   const [rows] = await db.query("update meetings_users set meetings_id = ?, users_id = ?, status = ?", [meetings_id, users_id, type === 3 || creator ? 1 : 0]);
