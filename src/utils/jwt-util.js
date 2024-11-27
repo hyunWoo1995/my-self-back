@@ -24,8 +24,8 @@ module.exports = {
       `accessToken:${user.id}`,
       accessToken,
       "EX",
-      10
-      // parseInt(process.env.ACCESS_TOKEN_TIMER)
+      // 10
+      parseInt(process.env.ACCESS_TOKEN_TIMER)
     );
     return accessToken;
   },

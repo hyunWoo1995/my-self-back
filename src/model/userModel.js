@@ -52,7 +52,7 @@ const User = {
   },
 
   // 닉네임으로 사용자 찾기
-  async findByNickName(nickname) {
+  async findByNickname(nickname) {
     const [rows] = await db.query("SELECT * FROM users WHERE nickname = ?", [
       nickname,
     ]);
