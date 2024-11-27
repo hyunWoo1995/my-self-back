@@ -362,9 +362,11 @@ module.exports = async (io) => {
     socket.on("enterMeeting", enterMeeting);
 
     // room에서 나가기
-    socket.on("leaveMeeting", (roomId) => {
-      socket.leave(roomId);
-      console.log(`${socket.data.userId}가 ${roomId}에서 나갔습니다.`);
+    socket.on("leaveMeeting", ({ region_code, meetings_id }) => {
+      const meetingRoom = `${region_code}-${meetings_id}`;
+      socket.leave(meetingRoom);
+      console.log("Room state after leave:", io.sockets.adapter.rooms.get(meetingRoom), socket.data);
+      console.log(`${socket.data.userId}가 ${meetingRoom}에서 나갔습니다.`);
     });
 
     // 모임 입장 신청
@@ -383,9 +385,9 @@ module.exports = async (io) => {
     });
 
     // 모임 떠남
-    socket.on("leaveMeeting", async ({ region_code, meetings_id }) => {
-      socket.leave(`${region_code}-${meetings_id}`);
-    });
+    // socket.on("leaveMeeting", async ({ region_code, meetings_id }) => {
+    //   socket.leave(`${region_code}-${meetings_id}`);
+    // });
 
     // 메시지 수신 및 전파 (Send message to a meeting room)
     socket.on("sendMessage", async ({ region_code, meetings_id, contents, users_id }) => {
@@ -412,12 +414,21 @@ module.exports = async (io) => {
 
         console.log("send usersInRoom", usersInRoom);
 
-        await moimModel.modifyActiveTime({ meetings_id, users_id: usersInRoom });
-        const meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
+        if (usersInRoom) {
+          await moimModel.modifyActiveTime({ meetings_id, users_id: usersInRoom });
+          const meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
 
-        console.log("meetingsUsersmeetingsUsersmeetingsUsers", meetingsUsers);
+          await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
 
-        await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
+          await pubClient.publish(
+            "meetingRoom",
+            JSON.stringify({
+              room: meetingRoom,
+              event: "meetingActive",
+              data: meetingsUsers,
+            })
+          );
+        }
 
         const message = await moimModel.getMessage(meetings_id, res.insertId, usersInRoom);
 
@@ -429,15 +440,6 @@ module.exports = async (io) => {
             room: meetingRoom,
             event: "receiveMessage",
             data: message,
-          })
-        );
-
-        await pubClient.publish(
-          "meetingRoom",
-          JSON.stringify({
-            room: meetingRoom,
-            event: "meetingActive",
-            data: meetingsUsers,
           })
         );
 
@@ -463,6 +465,7 @@ module.exports = async (io) => {
   // 특정 room에 접속한 사용자 목록 가져오기
   function getUsersInRoom(roomId) {
     const clients = io.sockets.adapter.rooms.get(roomId) || new Set();
+    console.log("clients", clients);
     return Array.from(clients).map((socketId) => {
       const socket = io.sockets.sockets.get(socketId);
       return socket?.data.userId || null;
