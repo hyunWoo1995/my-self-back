@@ -102,6 +102,8 @@ module.exports = async (io) => {
         })
       );
 
+      console.log("usersInRoom", usersInRoom);
+
       try {
         const [myListCache, messagesCache, meetingListCache, meetingDataCache, meetingsUsersCache] = await Promise.all([
           getAsync(`myList:${users_id}`),
@@ -118,7 +120,10 @@ module.exports = async (io) => {
           meetingData = JSON.parse(meetingDataCache);
         } else {
           meetingData = await moimModel.getMeetingData({ meetings_id });
-          setExAsync(`meetingData:${region_code}:${meetings_id}`, 3600 * 24 * 15, JSON.stringify(meetingData));
+
+          console.log("meetingDatameetingData", meetingData);
+
+          await pubClient.setEx(`meetingData:${region_code}:${meetings_id}`, 3600 * 24 * 15, JSON.stringify(meetingData));
         }
 
         // io.to(meetingRoom).emit("meetingData", meetingData);
@@ -147,10 +152,14 @@ module.exports = async (io) => {
         console.log("isss", isMember, type, region_code, meetings_id, users_id);
 
         if (isMember) {
-          await moimModel.modifyActiveTime({ meetings_id, users_id });
+          console.log("zxcmkzxcmk");
+          const row = await moimModel.modifyActiveTime({ meetings_id, users_id });
+          console.log("zxcmkzxcmk234, row");
 
           meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
+          console.log("a");
           await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
+          console.log("b");
 
           await pubClient.publish(
             "message",
@@ -161,6 +170,7 @@ module.exports = async (io) => {
             })
           );
         } else if (type === 3) {
+          console.log("cccc");
           return pubClient.publish(
             "message",
             JSON.stringify({
@@ -190,6 +200,7 @@ module.exports = async (io) => {
             );
           }
         }
+        console.log("dddd");
 
         // Meeting list check
         if (meetingListCache) {
@@ -217,7 +228,6 @@ module.exports = async (io) => {
         //   await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
         // }
 
-        console.log("meetingsUsers", meetingsUsers);
         // Messages check
         // if (messagesCache) {
         //   messages = JSON.parse(messagesCache);

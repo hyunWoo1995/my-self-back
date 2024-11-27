@@ -39,45 +39,6 @@ exports.generalMoimEnter = async ({ meetings_id, users_id }) => {
 
 // 모임 입장
 exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
-  // try {
-  //   // 모임 유저 목록에 있는지 확인
-  //   const [meetingUserData] = await db.query("SELECT * FROM meetings_users where meetings_id = ? and users_id = ?;", [data.meetings_id, data.users_id]);
-
-  //   // 모임 유저 목록 없음
-  //   if (meetingUserData?.length === 0) {
-  //     if (data?.creator) {
-  //       const [rows] = await db.query("insert meetings_users set meetings_id = ?, users_id = ?, status = 1", [data.meetings_id, data.users_id]);
-  //       return { DATA: rows, CODE: "EM000" };
-  //     }
-  //     // 비밀 모임인지 확인
-  //     const [meetingTypeData] = await db.query("select type from meetings where id = ?", [data.meetings_id]);
-  //
-  //     // 일반:3, 비밀:4
-  //     if (meetingTypeData[0].type === 4) {
-  //       const [rows] = await db.query("insert meetings_users set meetings_id = ?, users_id = ?, status = 0", [data.meetings_id, data.users_id]);
-
-  //       return { DATA: "입장 신청되었습니다.", CODE: "EM001" };
-  //     } else {
-  //       const [rows] = await db.query("insert meetings_users set meetings_id = ?, users_id = ?, status = 1", [data.meetings_id, data.users_id]);
-  //       return { CODE: "EM000" };
-  //     }
-  //   }
-
-  //   // 들어온 적 있는지 확인
-  //
-  //   const isEntered = !!(meetingUserData[0]?.status === 1);
-
-  //
-
-  //   if (isEntered) {
-  //     return { CODE: "EM000" };
-  //   } else {
-  //     return { DATA: "입장 신청되었습니다.", CODE: "EM001" };
-  //   }
-  // } catch (err) {
-  //
-  // }
-
   const [existingData] = await db.query("SELECT * FROM meetings_users WHERE meetings_id = ? AND users_id = ?", [meetings_id, users_id]);
 
   if (existingData.length > 0) {
@@ -117,6 +78,7 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
 
 // 모임 - 유저 active time 변경
 exports.modifyActiveTime = async ({ meetings_id, users_id }) => {
+  console.log("meetings_id", meetings_id, users_id);
   const [row] = await db.query("update meetings_users set last_active_time = ? where meetings_id = ? and users_id in (?)", [new Date(), meetings_id, users_id]);
 
   console.log("rrrr", row);
