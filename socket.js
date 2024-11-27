@@ -218,7 +218,6 @@ module.exports = async (io) => {
         // }
 
         console.log("meetingsUsers", meetingsUsers);
-        s;
         // Messages check
         // if (messagesCache) {
         //   messages = JSON.parse(messagesCache);
