@@ -32,20 +32,6 @@ module.exports = async (io) => {
     console.error("Redis SubClient Error:", err);
   });
 
-  // const redisSubscribe = (name) => {
-  //   subClient.v4.subscribe(name, (message) => {
-  //     console.log("Received message from channel 'redistest':", message);
-  //     try {
-  //       const parsedMessage = JSON.parse(message);
-  //       io.to(parsedMessage.room).emit(parsedMessage.event, parsedMessage.data);
-  //     } catch (error) {
-  //       console.error("Error parsing Redis message:", error);
-  //     }
-  //   });
-  // };
-
-  // redisSubscribe("asd");
-
   subClient.v4.subscribe("region_code", (message) => {
     console.log("Received message from channel 'redistest':", message);
     try {
@@ -404,10 +390,13 @@ module.exports = async (io) => {
         // await moimModel.modifyActiveTime({ meetings_id, users_id });
 
         const usersInRoom = getUsersInRoom(meetingRoom);
-        console.log("send usersInRoom", usersInRoom);
-        await moimModel.modifyActiveTime({ meetings_id, usersInRoom });
 
+        console.log("send usersInRoom", usersInRoom);
+
+        await moimModel.modifyActiveTime({ meetings_id, users_id: usersInRoom });
         const meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
+
+        console.log("meetingsUsersmeetingsUsersmeetingsUsers", meetingsUsers);
 
         await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
 
@@ -415,7 +404,7 @@ module.exports = async (io) => {
 
         // await moimModel.updateRead({ id: res.insertId, meetings_id: data.meetings_id, users_id: data.users_id });
 
-        pubClient.publish(
+        await pubClient.publish(
           "meetingRoom",
           JSON.stringify({
             room: meetingRoom,
@@ -424,7 +413,7 @@ module.exports = async (io) => {
           })
         );
 
-        pubClient.publish(
+        await pubClient.publish(
           "meetingRoom",
           JSON.stringify({
             room: meetingRoom,
@@ -460,4 +449,21 @@ module.exports = async (io) => {
       return socket?.data.userId || null;
     });
   }
+};
+
+const modifyActiveUser = async (meetings_id, users_id) => {
+  await moimModel.modifyActiveTime({ meetings_id, users_id });
+
+  await moimModel.getMeetingsUsers({ meetings_id });
+
+  await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
+
+  await pubClient.publish(
+    "meetingRoom",
+    JSON.stringify({
+      room: meetingRoom,
+      event: "meetingActive",
+      data: meetingsUsers,
+    })
+  );
 };
