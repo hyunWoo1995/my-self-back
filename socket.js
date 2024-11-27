@@ -374,7 +374,7 @@ module.exports = async (io) => {
       const res = await moimModel.getMyList({ users_id });
       pubClient.setEx(`myList:${users_id}`, 3600, JSON.stringify(res));
 
-      enterMeeting({ meetings_id, users_id, region_code, type });
+      await enterMeeting({ meetings_id, users_id, region_code, type });
     });
 
     // 모임 떠남
@@ -389,7 +389,15 @@ module.exports = async (io) => {
       const meetingsUsers = await getAsync(`meetingsUsers:${region_code}:${meetings_id}`);
       console.log("meetingmeetingmeeting", meetingsUsers);
 
-      const res = await moimModel.sendMessage({ region_code, meetings_id, contents, users_id, users: JSON.parse(meetingsUsers).map((v) => v.users_id) });
+      const res = await moimModel.sendMessage({
+        region_code,
+        meetings_id,
+        contents,
+        users_id,
+        users: JSON.parse(meetingsUsers)
+          .map((v) => v.users_id)
+          .join(","),
+      });
 
       if (res.affectedRows > 0) {
         // moimModel.modifyActiveTime({ meetings_id, users_id });
