@@ -3,6 +3,11 @@ const { createClient } = require("redis");
 const moimModel = require("./src/model/moimModel");
 const { createAdapter } = require("@socket.io/redis-adapter");
 const { isAfterDate } = require("./src/utils/date");
+const { findByUser } = require("./src/model/userModel");
+const { encryptMessage, decryptMessage } = require("./src/utils/aes");
+
+let typingUsers = [];
+const typingTimers = {}; // To store timers for each user
 
 // socket.js
 module.exports = async (io) => {
@@ -233,7 +238,8 @@ module.exports = async (io) => {
         //   messages = JSON.parse(messagesCache);
         // } else {
         messages = await moimModel.getMessages({ meetings_id });
-        console.log("messagesmessages", messages.lists);
+
+        const decryptMessages = messages.lists.map((v) => ({ ...v, contents: decryptMessage(v.contents) }));
 
         if (messages.lists.length > 0) {
           await setExAsync(`messages:${region_code}:${meetings_id}`, 3600, JSON.stringify(messages));
@@ -243,7 +249,7 @@ module.exports = async (io) => {
           JSON.stringify({
             room: meetingRoom,
             event: "messages",
-            data: { list: messages.lists, total: messages.total, readId: null },
+            data: { list: decryptMessages, total: messages.total, readId: null },
           })
         );
 
@@ -376,7 +382,29 @@ module.exports = async (io) => {
       // } else if (type === 4) {
       //   return io.to(region_code).emit("enterRes", { CODE: EM002, DATA: "입장 신청이 완료되었습니다." });
       // }
-      await moimModel.enterMeeting({ meetings_id, users_id, type });
+      const enterRes = await moimModel.enterMeeting({ meetings_id, users_id, type });
+
+      if (enterRes.CODE === "EM000") {
+        let meetingsUsers;
+        const meetingsUsersCache = await getAsync(`meetingsUsers:${region_code}:${meetings_id}`);
+
+        if (meetingsUsersCache) {
+          meetingsUsers = JSON.parse(meetingsUsersCache);
+        } else {
+          meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
+        }
+
+        const userInfo = await findByUser(users_id);
+        console.log("userInfo", userInfo);
+
+        const res = await moimModel.sendMessage({
+          meetings_id,
+          contents: encryptMessage(`${userInfo?.nickname}님이 입장했습니다.`),
+          users_id,
+          users: meetingsUsers.map((v) => v.users_id).join(","),
+          admin: 1,
+        });
+      }
 
       const meetingList = await moimModel.getMeetingList({ region_code });
       const meetingData = await moimModel.getMeetingData({ meetings_id });
@@ -422,7 +450,7 @@ module.exports = async (io) => {
       const res = await moimModel.sendMessage({
         region_code,
         meetings_id,
-        contents,
+        contents: encryptMessage(contents),
         users_id,
         users: JSON.parse(meetingsUsers)
           .map((v) => v.users_id)
@@ -455,6 +483,10 @@ module.exports = async (io) => {
 
         const message = await moimModel.getMessage(meetings_id, res.insertId, usersInRoom);
 
+        const decryptMes = decryptMessage(message.contents);
+
+        console.log("decryptMesdecryptMes", decryptMes);
+
         // await moimModel.updateRead({ id: res.insertId, meetings_id: data.meetings_id, users_id: data.users_id });
 
         await pubClient.publish(
@@ -462,7 +494,7 @@ module.exports = async (io) => {
           JSON.stringify({
             room: meetingRoom,
             event: "receiveMessage",
-            data: message,
+            data: { ...message, contents: decryptMes },
           })
         );
 
@@ -473,6 +505,8 @@ module.exports = async (io) => {
 
         console.log("messages", messages);
 
+        const decryptMessages = messages.lists.map((v) => ({ ...v, contents: decryptMessage(v.contents) }));
+
         setExAsync(`messages:${region_code}:${meetings_id}`, 3600, JSON.stringify(messages));
       }
     });
@@ -481,37 +515,50 @@ module.exports = async (io) => {
       await moimModel.modifyActiveTime({ meetings_id, users_id });
     });
 
-    let typyingUsers;
-
-    socket.on("typying", async ({ region_code, meetings_id, users_id }) => {
-      if (typyingUsers?.[users_id]) return;
-      console.log("typying users_id", users_id);
-
-      console.log("zxczxc", typyingUsers?.[users_id]);
-
+    socket.on("typing", async ({ region_code, meetings_id, users_id }) => {
       const meetingRoom = `${region_code}-${meetings_id}`;
-      typyingUsers = { ...typyingUsers, [users_id]: true };
 
+      // Check if user is already typing
+      const userIndex = typingUsers.findIndex((v) => v.users_id === users_id);
+      if (userIndex === -1) {
+        // Add user if not already typing
+        console.log("typingUsers", typingUsers);
+        typingUsers.push({ users_id });
+      }
+
+      console.log("Current Typing Users:", typingUsers);
+
+      // Clear existing timer for this user
+      if (typingTimers[users_id]) {
+        clearTimeout(typingTimers[users_id]);
+      }
+
+      // Publish updated typing list
       await pubClient.publish(
         "meetingRoom",
         JSON.stringify({
           room: meetingRoom,
-          event: "userTypying",
-          data: typyingUsers,
+          event: "userTyping",
+          data: typingUsers,
         })
       );
 
-      setTimeout(async () => {
-        delete typyingUsers?.[users_id];
+      // Set a timer to remove the user after 3 seconds
+      typingTimers[users_id] = setTimeout(async () => {
+        typingUsers = typingUsers.filter((v) => v.users_id !== users_id);
+        delete typingTimers[users_id]; // Clean up timer reference
+
+        console.log("User stopped typing:", typingUsers);
+
         await pubClient.publish(
           "meetingRoom",
           JSON.stringify({
             room: meetingRoom,
-            event: "userTypying",
-            data: typyingUsers,
+            event: "userTyping",
+            data: typingUsers,
           })
         );
-      }, 3000);
+      }, 1000);
     });
 
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)

@@ -1,4 +1,5 @@
 const db = require("../../db");
+const { encryptMessage } = require("../utils/aes");
 const { isAfterDate } = require("../utils/date");
 
 // 모임 생성
@@ -58,7 +59,7 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
       type === 3 || creator ? 1 : 0,
       new Date(),
     ]);
-    return rows;
+    return { DATA: rows, CODE: "EM000" };
   }
 
   // if (existingData) {
@@ -91,7 +92,7 @@ exports.modifyActiveTime = async ({ meetings_id, users_id }) => {
 // 메세지 전체 조회
 exports.getMessages = async ({ meetings_id, length }) => {
   const [lists] = await db.query(
-    "SELECT m.id, m.contents, m.created_at, m.users_id, m.meetings_id, m.users, u.nickname  FROM moimmoim.messages AS m left join users u on m.users_id = u.id where meetings_id = ? ORDER BY  m.created_at DESC;",
+    "SELECT m.id, m.contents, m.created_at, m.users_id, m.meetings_id, m.users, u.nickname, m.admin FROM moimmoim.messages AS m left join users u on m.users_id = u.id where meetings_id = ? ORDER BY  m.created_at DESC;",
     [meetings_id]
   );
 
@@ -136,7 +137,14 @@ exports.getMoreMessage = async ({ meetings_id, length }) => {
 
 // 메세지 보내기
 exports.sendMessage = async (data) => {
-  const [rows] = await db.query("insert messages set meetings_id = ?, created_at = ?, contents = ?, users_id = ?, users = ?", [data.meetings_id, new Date(), data.contents, data.users_id, data.users]);
+  const [rows] = await db.query("insert messages set meetings_id = ?, created_at = ?, contents = ?, users_id = ?, users = ?, admin = ?", [
+    data.meetings_id,
+    new Date(),
+    data.contents,
+    data.users_id,
+    data.users,
+    data.admin || 0,
+  ]);
 
   return rows;
 };
