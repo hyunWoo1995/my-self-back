@@ -11,11 +11,12 @@ const User = {
     const gender = params.gender || null;
     const provider = params.provider || null;
     const provider_id = params.provider_id || null;
+    const profileImageName = params.profileImageName || null;
     const ip = params.ip || null;
     const [result] = await db.query(
-      `INSERT INTO users (email, password, nickname, birthdate, gender, provider, provider_id, ip) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [email, password, nickname, birthdate, gender, provider, provider_id, ip]
+      `INSERT INTO users (email, password, nickname, birthdate, gender, provider, provider_id, profile_image_name, ip) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [email, password, nickname, birthdate, gender, provider, provider_id, profileImageName, ip]
     );
     return result.insertId;
   },
