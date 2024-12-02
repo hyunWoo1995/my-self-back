@@ -87,7 +87,7 @@ exports.modifyActiveTime = async ({ meetings_id, users_id }) => {
 // 메세지 전체 조회
 exports.getMessages = async ({ meetings_id, length }) => {
   const [lists] = await db.query(
-    "SELECT m.id, m.contents, m.created_at, m.users_id, m.meetings_id, m.users, u.nickname, m.admin FROM moimmoim.messages AS m left join users u on m.users_id = u.id where meetings_id = ? ORDER BY  m.created_at DESC;",
+    "SELECT m.id, m.contents, m.created_at, m.users_id, m.meetings_id, m.users, u.nickname, m.admin FROM moimmoim.messages AS m left join users u on m.users_id = u.id where meetings_id = ? ORDER BY  m.created_at DESC limit 0,20;",
     [meetings_id]
   );
 

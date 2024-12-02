@@ -281,6 +281,7 @@ module.exports = async (io) => {
 
     // 지역 입장 (Join region)
     socket.on("join", async ({ user, region_code }) => {
+      console.log("user join", user, region_code);
       socket.join(region_code);
 
       // Check Redis cache for meeting list
@@ -400,6 +401,7 @@ module.exports = async (io) => {
       const enterRes = await moimModel.enterMeeting({ meetings_id, users_id, type });
 
       if (enterRes.CODE === "EM000") {
+        console.log("onesignal_idonesignal_id", onesignal_id);
         axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`).then((res1) => {
           console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
 
