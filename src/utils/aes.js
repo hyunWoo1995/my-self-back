@@ -17,9 +17,7 @@ function decryptMessage(ciphertext) {
 // 테스트 실행
 const message = "안녕하세요, 비밀 메시지입니다!";
 const encryptedMessage = encryptMessage(message);
-console.log("Encrypted:", encryptedMessage);
 
 const decryptedMessage = decryptMessage("U2FsdGVkX1/sK8UhIowDWrOsXp1JZrHYESSPwtAkMjk=");
-console.log("Decrypted:", decryptedMessage);
 
 module.exports = { encryptMessage, decryptMessage };

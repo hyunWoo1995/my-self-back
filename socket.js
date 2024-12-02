@@ -5,6 +5,7 @@ const { createAdapter } = require("@socket.io/redis-adapter");
 const { isAfterDate } = require("./src/utils/date");
 const { findByUser } = require("./src/model/userModel");
 const { encryptMessage, decryptMessage } = require("./src/utils/aes");
+const { default: axios } = require("axios");
 
 let typingUsers = [];
 const typingTimers = {}; // To store timers for each user
@@ -38,7 +39,6 @@ module.exports = async (io) => {
   });
 
   subClient.v4.subscribe("message", (message) => {
-    console.log("socket.id", message);
     try {
       const parsedMessage = JSON.parse(message);
       io.to(parsedMessage.room).emit(parsedMessage.event, parsedMessage.data);
@@ -107,8 +107,6 @@ module.exports = async (io) => {
         })
       );
 
-      console.log("usersInRoom", usersInRoom);
-
       try {
         const [myListCache, messagesCache, meetingListCache, meetingDataCache, meetingsUsersCache] = await Promise.all([
           getAsync(`myList:${users_id}`),
@@ -125,8 +123,6 @@ module.exports = async (io) => {
           meetingData = JSON.parse(meetingDataCache);
         } else {
           meetingData = await moimModel.getMeetingData({ meetings_id });
-
-          console.log("meetingDatameetingData", meetingData);
 
           await pubClient.setEx(`meetingData:${region_code}:${meetings_id}`, 3600 * 24 * 15, JSON.stringify(meetingData));
         }
@@ -154,17 +150,13 @@ module.exports = async (io) => {
 
         const isApplied = target && Object.keys(target).length > 0;
         const isMember = target?.status === 1;
-        console.log("isss", isMember, type, region_code, meetings_id, users_id);
 
         if (isMember) {
-          console.log("zxcmkzxcmk");
           const row = await moimModel.modifyActiveTime({ meetings_id, users_id });
-          console.log("zxcmkzxcmk234, row");
 
           meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
-          console.log("a");
+
           await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
-          console.log("b");
 
           await pubClient.publish(
             "message",
@@ -175,7 +167,6 @@ module.exports = async (io) => {
             })
           );
         } else if (type === 3) {
-          console.log("cccc");
           return pubClient.publish(
             "message",
             JSON.stringify({
@@ -205,7 +196,6 @@ module.exports = async (io) => {
             );
           }
         }
-        console.log("dddd");
 
         // Meeting list check
         if (meetingListCache) {
@@ -308,8 +298,6 @@ module.exports = async (io) => {
         } else {
           const res = await moimModel.getMeetingList({ region_code: region_code });
 
-          console.log("asdfmksdmfksdmf", res);
-
           pubClient.setEx(`meetingList:${region_code}`, 3600, JSON.stringify(res)); // Cache for 1 hour
 
           // io.to(region_code).emit("list", res);
@@ -330,6 +318,7 @@ module.exports = async (io) => {
 
     // 모임 생성 (Generate a meeting)
     socket.on("generateMeeting", async (data) => {
+      console.log("generateMeeting data", data);
       const res = await moimModel.generateMeeting({
         name: data.name,
         region_code: data.region_code,
@@ -342,6 +331,34 @@ module.exports = async (io) => {
       });
 
       if (res.affectedRows > 0) {
+        axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`).then((res1) => {
+          console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
+
+          if (res1.data.properties.tags) {
+            const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), res.insertId].filter((v, i, arr) => arr.indexOf(v) === i);
+
+            console.log("meetings_idsmeetings_ids", meetings_ids);
+            axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
+              properties: {
+                tags: {
+                  ...res1.data.properties.tags,
+                  meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
+                  user_id: data.users_id,
+                },
+              },
+            });
+          } else {
+            axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
+              properties: {
+                tags: {
+                  meetings_id: String(res.insertId),
+                  user_id: data.users_id,
+                },
+              },
+            });
+          }
+        });
+
         // Add the user to the new meeting
         await moimModel.enterMeeting({
           users_id: data.users_id,
@@ -371,8 +388,6 @@ module.exports = async (io) => {
     socket.on("leaveMeeting", ({ region_code, meetings_id }) => {
       const meetingRoom = `${region_code}-${meetings_id}`;
       socket.leave(meetingRoom);
-      console.log("Room state after leave:", io.sockets.adapter.rooms.get(meetingRoom), socket.data);
-      console.log(`${socket.data.userId}가 ${meetingRoom}에서 나갔습니다.`);
     });
 
     // 모임 입장 신청
@@ -385,6 +400,34 @@ module.exports = async (io) => {
       const enterRes = await moimModel.enterMeeting({ meetings_id, users_id, type });
 
       if (enterRes.CODE === "EM000") {
+        axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`).then((res1) => {
+          console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
+
+          if (res1.data.properties.tags) {
+            const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), res.insertId].filter((v, i, arr) => arr.indexOf(v) === i);
+
+            console.log("meetings_idsmeetings_ids", meetings_ids);
+            axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
+              properties: {
+                tags: {
+                  ...res1.data.properties.tags,
+                  meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
+                  user_id: data.users_id,
+                },
+              },
+            });
+          } else {
+            axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
+              properties: {
+                tags: {
+                  meetings_id: String(res.insertId),
+                  user_id: data.users_id,
+                },
+              },
+            });
+          }
+        });
+
         let meetingsUsers;
         const meetingsUsersCache = await getAsync(`meetingsUsers:${region_code}:${meetings_id}`);
 
@@ -395,7 +438,6 @@ module.exports = async (io) => {
         }
 
         const userInfo = await findByUser(users_id);
-        console.log("userInfo", userInfo);
 
         const res = await moimModel.sendMessage({
           meetings_id,
@@ -445,7 +487,6 @@ module.exports = async (io) => {
       const meetingRoom = `${region_code}-${meetings_id}`;
 
       const meetingsUsers = await getAsync(`meetingsUsers:${region_code}:${meetings_id}`);
-      console.log("meetingmeetingmeeting", meetingsUsers);
 
       const res = await moimModel.sendMessage({
         region_code,
@@ -458,12 +499,25 @@ module.exports = async (io) => {
       });
 
       if (res.affectedRows > 0) {
+        axios.post(
+          "https://api.onesignal.com/notifications",
+          {
+            app_id: process.env.ONESIGNAL_APP_ID,
+            target_channel: "push",
+            headings: { en: "moimmoim", ko: "모임모임" },
+            contents: { en: contents, ko: contents },
+            filters: [{ field: "tag", key: "meetings_id", relation: "exists", value: meetings_id, field: "tag", key: "user_id", relation: "!=", value: users_id }],
+          },
+          {
+            headers: {
+              authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+            },
+          }
+        );
         // moimModel.modifyActiveTime({ meetings_id, users_id });
         // await moimModel.modifyActiveTime({ meetings_id, users_id });
 
         const usersInRoom = getUsersInRoom(meetingRoom);
-
-        console.log("send usersInRoom", usersInRoom);
 
         if (usersInRoom) {
           await moimModel.modifyActiveTime({ meetings_id, users_id: usersInRoom });
@@ -485,8 +539,6 @@ module.exports = async (io) => {
 
         const decryptMes = decryptMessage(message.contents);
 
-        console.log("decryptMesdecryptMes", decryptMes);
-
         // await moimModel.updateRead({ id: res.insertId, meetings_id: data.meetings_id, users_id: data.users_id });
 
         await pubClient.publish(
@@ -502,8 +554,6 @@ module.exports = async (io) => {
         // 현재 room에 접속한 사용자 목록 요청
 
         const messages = await moimModel.getMessages({ meetings_id: meetings_id });
-
-        console.log("messages", messages);
 
         const decryptMessages = messages.lists.map((v) => ({ ...v, contents: decryptMessage(v.contents) }));
 
@@ -522,11 +572,9 @@ module.exports = async (io) => {
       const userIndex = typingUsers.findIndex((v) => v.users_id === users_id);
       if (userIndex === -1) {
         // Add user if not already typing
-        console.log("typingUsers", typingUsers);
+
         typingUsers.push({ users_id });
       }
-
-      console.log("Current Typing Users:", typingUsers);
 
       // Clear existing timer for this user
       if (typingTimers[users_id]) {
@@ -548,8 +596,6 @@ module.exports = async (io) => {
         typingUsers = typingUsers.filter((v) => v.users_id !== users_id);
         delete typingTimers[users_id]; // Clean up timer reference
 
-        console.log("User stopped typing:", typingUsers);
-
         await pubClient.publish(
           "meetingRoom",
           JSON.stringify({
@@ -568,7 +614,7 @@ module.exports = async (io) => {
   // 특정 room에 접속한 사용자 목록 가져오기
   function getUsersInRoom(roomId) {
     const clients = io.sockets.adapter.rooms.get(roomId) || new Set();
-    console.log("clients", clients);
+
     return Array.from(clients).map((socketId) => {
       const socket = io.sockets.sockets.get(socketId);
       return socket?.data.userId || null;

@@ -19,8 +19,6 @@ exports.getMeetingList = async ({ region_code }) => {
     [region_code]
   );
 
-  console.log("zxczxczxc", rows);
-
   return rows;
 };
 
@@ -79,10 +77,7 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
 
 // 모임 - 유저 active time 변경
 exports.modifyActiveTime = async ({ meetings_id, users_id }) => {
-  console.log("meetings_id", meetings_id, users_id);
   const [row] = await db.query("update meetings_users set last_active_time = ? where meetings_id = ? and users_id in (?)", [new Date(), meetings_id, users_id]);
-
-  console.log("rrrr", row);
 
   return row;
 };
@@ -183,8 +178,6 @@ exports.lastRead = async ({ meetings_id, users_id }) => {
 
 // 모임-유저 조회
 exports.getMeetingsUsers = async ({ meetings_id }) => {
-  console.log("meetings_idmeetings_id", meetings_id);
-
   const [rows] = await db.query("select * from meetings_users where meetings_id = ?", meetings_id);
 
   return rows;
