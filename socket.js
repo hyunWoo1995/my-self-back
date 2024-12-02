@@ -508,7 +508,7 @@ module.exports = async (io) => {
             target_channel: "push",
             headings: { en: "moimmoim", ko: "모임모임" },
             contents: { en: contents, ko: contents },
-            filters: [{ field: "tag", key: "meetings_id", relation: "exists", value: meetings_id, field: "tag", key: "user_id", relation: "!=", value: users_id }],
+            filters: [{ field: "tag", key: "meetings_id", relation: "exists", value: meetings_id, field: "tag", key: "user_id", relation: "!=", value: String(users_id) }],
           },
           {
             headers: {
