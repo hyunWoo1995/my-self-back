@@ -90,7 +90,7 @@ module.exports = async (io) => {
   io.on("connection", (socket) => {
     socket.emit("message", socket.id);
 
-    const enterMeeting = async ({ region_code, meetings_id, users_id, type }) => {
+    const enterMeeting = async ({ region_code, meetings_id, users_id, type, onesignal_id }) => {
       const meetingRoom = `${region_code}-${meetings_id}`;
       socket.join(meetingRoom);
       socket.data.userId = users_id;
@@ -155,6 +155,34 @@ module.exports = async (io) => {
           const row = await moimModel.modifyActiveTime({ meetings_id, users_id });
 
           meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
+
+          axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`).then((res1) => {
+            console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
+
+            if (res1.data.properties.tags) {
+              const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), meetings_id].map((v) => String(v)).filter((v, i, arr) => arr.indexOf(v) === i);
+
+              console.log("meetings_idsmeetings_ids", meetings_ids);
+              axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
+                properties: {
+                  tags: {
+                    ...res1.data.properties.tags,
+                    meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
+                    user_id: users_id,
+                  },
+                },
+              });
+            } else {
+              axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
+                properties: {
+                  tags: {
+                    meetings_id: meetings_id,
+                    user_id: users_id,
+                  },
+                },
+              });
+            }
+          });
 
           await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
 
@@ -508,7 +536,7 @@ module.exports = async (io) => {
             target_channel: "push",
             headings: { en: "moimmoim", ko: "모임모임" },
             contents: { en: contents, ko: contents },
-            filters: [{ field: "tag", key: "meetings_id", relation: "exists", value: meetings_id, field: "tag", key: "user_id", relation: "!=", value: String(users_id) }],
+            filters: [{ field: "tag", key: "meetings_id", relation: "exists", value: meetings_id, field: "tag", key: "user_id", relation: "!=", value: users_id }],
           },
           {
             headers: {
