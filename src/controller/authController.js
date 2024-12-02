@@ -180,13 +180,14 @@ const authController = {
   //회원 가입
   async register(req, res) {
     try {
-      const { email, password, passwordCheck, nickname, birthdate } = req.body;
+      const { email, password, passwordCheck, nickname, birthdate, interests, addresses } = req.body;
       // interests 배열 및 addresses 배열 파싱
-      const interests = req.body.interests.map(Number);
-      const addresses = req.body.addresses.map((address) => ({
-        address: address.address,
-        address_code: address.address_code,
-      }));
+      // const interests = req.body.interests.map(Number);
+      // const addresses = req.body.addresses.map((address) => ({
+      //   address: address.address,
+      //   address_code: address.address_code,
+      // }));
+      console.log('req.body' , req.body)
       const ip = req.ip || req.connection.remoteAddress;
       // 이메일 중복 확인
       let existingUser = await userModel.findByEmail(email);
@@ -208,17 +209,17 @@ const authController = {
       // 비밀번호 해시 처리
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      let profileImageName = null;
-      if (req.file) {
-        // 유틸리티 함수를 호출하여 Azure에 업로드
-        const { blobName } = await azureUtil.uploadFile(
-          "profile",
-          req.file.buffer,
-          req.file.originalname
-        );
-        profileImageName = blobName;
-      }
-      console.log("profileImageName", profileImageName);
+      // let profileImageName = null;
+      // if (req.file) {
+      //   // 유틸리티 함수를 호출하여 Azure에 업로드
+      //   const { blobName } = await azureUtil.uploadFile(
+      //     "profile",
+      //     req.file.buffer,
+      //     req.file.originalname
+      //   );
+      //   profileImageName = blobName;
+      // }
+      // console.log("profileImageName", profileImageName);
 
       // 새로운 사용자 생성
       const userId = await userModel.createUser({
@@ -228,7 +229,6 @@ const authController = {
         birthdate,
         gender,
         ip,
-        profileImageName,
       });
       const resultInterest = await Promise.all(
         interests.map((item) =>

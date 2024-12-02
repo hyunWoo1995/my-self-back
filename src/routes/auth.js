@@ -4,7 +4,8 @@ const router = express.Router();
 const upload = require("../middlewares/upload")
 
 // 사용자 등록
-router.post("/register", upload.single("profileImage"), authController.register);
+router.post("/register", authController.register);
+// router.post("/register", upload.single("profileImage"), authController.register);
 // 로그인
 router.post("/login", authController.login);
 
