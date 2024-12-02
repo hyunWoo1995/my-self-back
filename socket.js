@@ -391,7 +391,7 @@ module.exports = async (io) => {
     });
 
     // 모임 입장 신청
-    socket.on("joinMeeting", async ({ region_code, users_id, meetings_id, type }) => {
+    socket.on("joinMeeting", async ({ region_code, users_id, meetings_id, type, onesignal_id }) => {
       // if (type === 3) {
       //   await moimModel.enterMeeting({ meetings_id, users_id, type });
       // } else if (type === 4) {
@@ -400,28 +400,28 @@ module.exports = async (io) => {
       const enterRes = await moimModel.enterMeeting({ meetings_id, users_id, type });
 
       if (enterRes.CODE === "EM000") {
-        axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`).then((res1) => {
+        axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`).then((res1) => {
           console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
 
           if (res1.data.properties.tags) {
-            const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), res.insertId].filter((v, i, arr) => arr.indexOf(v) === i);
+            const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), meetings_id].filter((v, i, arr) => arr.indexOf(v) === i);
 
             console.log("meetings_idsmeetings_ids", meetings_ids);
-            axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
+            axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
               properties: {
                 tags: {
                   ...res1.data.properties.tags,
                   meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
-                  user_id: data.users_id,
+                  user_id: users_id,
                 },
               },
             });
           } else {
-            axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
+            axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
               properties: {
                 tags: {
-                  meetings_id: String(res.insertId),
-                  user_id: data.users_id,
+                  meetings_id: String(meetings_id),
+                  user_id: users_id,
                 },
               },
             });
