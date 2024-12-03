@@ -157,33 +157,37 @@ module.exports = async (io) => {
           meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
 
           if (onesignal_id) {
-            axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`).then((res1) => {
-              console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
+            try {
+              axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`).then((res1) => {
+                console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
 
-              if (res1.data.properties.tags) {
-                const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), meetings_id].map((v) => String(v)).filter((v, i, arr) => arr.indexOf(v) === i);
+                if (res1.data.properties.tags) {
+                  const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), meetings_id].map((v) => String(v)).filter((v, i, arr) => arr.indexOf(v) === i);
 
-                console.log("meetings_idsmeetings_ids", meetings_ids);
-                axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
-                  properties: {
-                    tags: {
-                      ...res1.data.properties.tags,
-                      meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
-                      user_id: users_id,
+                  console.log("meetings_idsmeetings_ids", meetings_ids);
+                  axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
+                    properties: {
+                      tags: {
+                        ...res1.data.properties.tags,
+                        meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
+                        user_id: users_id,
+                      },
                     },
-                  },
-                });
-              } else {
-                axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
-                  properties: {
-                    tags: {
-                      meetings_id: meetings_id,
-                      user_id: users_id,
+                  });
+                } else {
+                  axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
+                    properties: {
+                      tags: {
+                        meetings_id: meetings_id,
+                        user_id: users_id,
+                      },
                     },
-                  },
-                });
-              }
-            });
+                  });
+                }
+              });
+            } catch (err) {
+              console.error("onesignal_id user find  err", err);
+            }
           }
           await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
 
@@ -363,7 +367,7 @@ module.exports = async (io) => {
       });
 
       if (res.affectedRows > 0) {
-        if (data.onesignal_id) {
+        if (data?.onesignal_id) {
           axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`).then((res1) => {
             console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
 
