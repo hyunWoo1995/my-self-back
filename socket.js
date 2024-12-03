@@ -91,23 +91,23 @@ module.exports = async (io) => {
     socket.emit("message", socket.id);
 
     const enterMeeting = async ({ region_code, meetings_id, users_id, type, onesignal_id }) => {
-      const meetingRoom = `${region_code}-${meetings_id}`;
-      socket.join(meetingRoom);
-      socket.data.userId = users_id;
-
-      // 현재 room에 접속한 사용자 목록 요청
-      const usersInRoom = getUsersInRoom(meetingRoom);
-
-      await pubClient.publish(
-        "meetingRoom",
-        JSON.stringify({
-          room: meetingRoom,
-          event: "usersInRoom",
-          data: usersInRoom,
-        })
-      );
-
       try {
+        const meetingRoom = `${region_code}-${meetings_id}`;
+        socket.join(meetingRoom);
+        socket.data.userId = users_id;
+
+        // 현재 room에 접속한 사용자 목록 요청
+        const usersInRoom = getUsersInRoom(meetingRoom);
+
+        await pubClient.publish(
+          "meetingRoom",
+          JSON.stringify({
+            room: meetingRoom,
+            event: "usersInRoom",
+            data: usersInRoom,
+          })
+        );
+
         const [myListCache, messagesCache, meetingListCache, meetingDataCache, meetingsUsersCache] = await Promise.all([
           getAsync(`myList:${users_id}`),
           getAsync(`messages:${region_code}:${meetings_id}`),
@@ -156,34 +156,35 @@ module.exports = async (io) => {
 
           meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
 
-          axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`).then((res1) => {
-            console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
+          if (onesignal_id) {
+            axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`).then((res1) => {
+              console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
 
-            if (res1.data.properties.tags) {
-              const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), meetings_id].map((v) => String(v)).filter((v, i, arr) => arr.indexOf(v) === i);
+              if (res1.data.properties.tags) {
+                const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), meetings_id].map((v) => String(v)).filter((v, i, arr) => arr.indexOf(v) === i);
 
-              console.log("meetings_idsmeetings_ids", meetings_ids);
-              axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
-                properties: {
-                  tags: {
-                    ...res1.data.properties.tags,
-                    meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
-                    user_id: users_id,
+                console.log("meetings_idsmeetings_ids", meetings_ids);
+                axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
+                  properties: {
+                    tags: {
+                      ...res1.data.properties.tags,
+                      meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
+                      user_id: users_id,
+                    },
                   },
-                },
-              });
-            } else {
-              axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
-                properties: {
-                  tags: {
-                    meetings_id: meetings_id,
-                    user_id: users_id,
+                });
+              } else {
+                axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
+                  properties: {
+                    tags: {
+                      meetings_id: meetings_id,
+                      user_id: users_id,
+                    },
                   },
-                },
-              });
-            }
-          });
-
+                });
+              }
+            });
+          }
           await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
 
           await pubClient.publish(
@@ -279,7 +280,9 @@ module.exports = async (io) => {
             data: meetingsUsers,
           })
         );
-      } catch (error) {}
+      } catch (error) {
+        console.error("enterMeeting", err);
+      }
     };
 
     // 나의 모임 목록
@@ -360,33 +363,35 @@ module.exports = async (io) => {
       });
 
       if (res.affectedRows > 0) {
-        axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`).then((res1) => {
-          console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
+        if (data.onesignal_id) {
+          axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`).then((res1) => {
+            console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
 
-          if (res1.data.properties.tags) {
-            const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), res.insertId].filter((v, i, arr) => arr.indexOf(v) === i);
+            if (res1.data.properties.tags) {
+              const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), res.insertId].filter((v, i, arr) => arr.indexOf(v) === i);
 
-            console.log("meetings_idsmeetings_ids", meetings_ids);
-            axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
-              properties: {
-                tags: {
-                  ...res1.data.properties.tags,
-                  meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
-                  user_id: data.users_id,
+              console.log("meetings_idsmeetings_ids", meetings_ids);
+              axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
+                properties: {
+                  tags: {
+                    ...res1.data.properties.tags,
+                    meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
+                    user_id: data.users_id,
+                  },
                 },
-              },
-            });
-          } else {
-            axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
-              properties: {
-                tags: {
-                  meetings_id: String(res.insertId),
-                  user_id: data.users_id,
+              });
+            } else {
+              axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
+                properties: {
+                  tags: {
+                    meetings_id: String(res.insertId),
+                    user_id: data.users_id,
+                  },
                 },
-              },
-            });
-          }
-        });
+              });
+            }
+          });
+        }
 
         // Add the user to the new meeting
         await moimModel.enterMeeting({
@@ -426,85 +431,90 @@ module.exports = async (io) => {
       // } else if (type === 4) {
       //   return io.to(region_code).emit("enterRes", { CODE: EM002, DATA: "입장 신청이 완료되었습니다." });
       // }
-      const enterRes = await moimModel.enterMeeting({ meetings_id, users_id, type });
+      try {
+        const enterRes = await moimModel.enterMeeting({ meetings_id, users_id, type });
 
-      if (enterRes.CODE === "EM000") {
-        console.log("onesignal_idonesignal_id", onesignal_id);
-        axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`).then((res1) => {
-          console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
+        if (enterRes.CODE === "EM000") {
+          if (onesignal_id) {
+            axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`).then((res1) => {
+              console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
 
-          if (res1.data.properties.tags) {
-            const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), meetings_id].filter((v, i, arr) => arr.indexOf(v) === i);
+              if (res1.data.properties.tags) {
+                const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), meetings_id].filter((v, i, arr) => arr.indexOf(v) === i);
 
-            console.log("meetings_idsmeetings_ids", meetings_ids);
-            axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
-              properties: {
-                tags: {
-                  ...res1.data.properties.tags,
-                  meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
-                  user_id: users_id,
-                },
-              },
-            });
-          } else {
-            axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
-              properties: {
-                tags: {
-                  meetings_id: String(meetings_id),
-                  user_id: users_id,
-                },
-              },
+                console.log("meetings_idsmeetings_ids", meetings_ids);
+                axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
+                  properties: {
+                    tags: {
+                      ...res1.data.properties.tags,
+                      meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
+                      user_id: users_id,
+                    },
+                  },
+                });
+              } else {
+                axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
+                  properties: {
+                    tags: {
+                      meetings_id: String(meetings_id),
+                      user_id: users_id,
+                    },
+                  },
+                });
+              }
             });
           }
-        });
 
-        let meetingsUsers;
-        const meetingsUsersCache = await getAsync(`meetingsUsers:${region_code}:${meetings_id}`);
+          let meetingsUsers;
+          const meetingsUsersCache = await getAsync(`meetingsUsers:${region_code}:${meetings_id}`);
 
-        if (meetingsUsersCache) {
-          meetingsUsers = JSON.parse(meetingsUsersCache);
-        } else {
-          meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
+          if (meetingsUsersCache) {
+            meetingsUsers = JSON.parse(meetingsUsersCache);
+          } else {
+            meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
+          }
+
+          const userInfo = await findByUser(users_id);
+
+          const res = await moimModel.sendMessage({
+            meetings_id,
+            contents: encryptMessage(`${userInfo?.nickname}님이 입장했습니다.`),
+            users_id,
+            users: meetingsUsers.map((v) => v.users_id).join(","),
+            admin: 1,
+          });
         }
 
-        const userInfo = await findByUser(users_id);
+        const meetingList = await moimModel.getMeetingList({ region_code });
+        const meetingData = await moimModel.getMeetingData({ meetings_id });
+        const res = await moimModel.getMyList({ users_id });
 
-        const res = await moimModel.sendMessage({
-          meetings_id,
-          contents: encryptMessage(`${userInfo?.nickname}님이 입장했습니다.`),
-          users_id,
-          users: meetingsUsers.map((v) => v.users_id).join(","),
-          admin: 1,
-        });
+        pubClient.publish(
+          "region_code",
+          JSON.stringify({
+            room: region_code,
+            event: "meetingData",
+            data: meetingData,
+          })
+        );
+
+        pubClient.publish(
+          "region_code",
+          JSON.stringify({
+            room: region_code,
+            event: "meetingList",
+            data: meetingList,
+          })
+        );
+
+        await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(meetingList));
+        pubClient.setEx(`meetingData:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingData));
+        pubClient.setEx(`myList:${users_id}`, 3600, JSON.stringify(res));
+
+        await enterMeeting({ meetings_id, users_id, region_code, type });
+      } catch (err) {
+        console.error("joinMeeting", err);
       }
-
-      const meetingList = await moimModel.getMeetingList({ region_code });
-      const meetingData = await moimModel.getMeetingData({ meetings_id });
-      const res = await moimModel.getMyList({ users_id });
-
-      pubClient.publish(
-        "region_code",
-        JSON.stringify({
-          room: region_code,
-          event: "meetingData",
-          data: meetingData,
-        })
-      );
-
-      pubClient.publish(
-        "region_code",
-        JSON.stringify({
-          room: region_code,
-          event: "meetingList",
-          data: meetingList,
-        })
-      );
-
-      await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(meetingList));
-      pubClient.setEx(`meetingData:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingData));
-      pubClient.setEx(`myList:${users_id}`, 3600, JSON.stringify(res));
-
-      await enterMeeting({ meetings_id, users_id, region_code, type });
     });
 
     // 모임 떠남
