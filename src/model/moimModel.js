@@ -131,7 +131,7 @@ exports.getMessage = async (meetings_id, id, usersInRoom) => {
 
 // 메세지 더 받아오기
 exports.getMoreMessage = async ({ meetings_id, length }) => {
-  const [rows] = await db.query("SELECT m.* FROM messages m WHERE m.meetings_id = ? ORDER BY m.created_at desc limit ?, 20;", [meetings_id, length]);
+  const [rows] = await db.query("SELECT m.* FROM messages m WHERE m.meetings_id = ? ORDER BY m.id desc limit ?, 20;", [meetings_id, length]);
   return rows;
 };
 
