@@ -187,31 +187,36 @@ exports.handleJoinRegion = async ({ socket, pubClient, getAsync, setExAsync }, {
 
   let meetingList = meetingListcache ? JSON.parse(meetingListcache) : await moimModel.getMeetingList({ region_code });
 
+  console.log("meetingListcachemeetingListcache", meetingListcache);
+
   if (!meetingListcache) {
-    const addActiveTimeList = await Promise.all(
-      meetingList.map(async (v) => {
-        const { id } = v;
+    // const addActiveTimeList = await Promise.all(
+    //   meetingList.map(async (v) => {
+    //     const { id } = v;
 
-        const meetingsUserData = await getAsync(`meetingsUsers:${region_code}:${id}`);
+    //     const meetingsUserData = await getAsync(`meetingsUsers:${region_code}:${id}`);
 
-        const max_active_time_item = JSON.parse(meetingsUserData)
-          ?.map((v) => v.last_active_time)
-          .sort((a, b) => new Date(b) - new Date(a))[0];
+    //     const max_active_time_item = JSON.parse(meetingsUserData)
+    //       ?.map((v) => v.last_active_time)
+    //       .sort((a, b) => new Date(b) - new Date(a))[0];
 
-        return { ...v, last_active_time: max_active_time_item };
+    //     return { ...v, last_active_time: max_active_time_item };
+    //   })
+    // );
+
+    // console.log("addActiveTimeList", addActiveTimeList);
+    // await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(addActiveTimeList));
+    handleActiveTimeMeeting({ meetingList, getAsync, pubClient, setExAsync, region_code });
+  } else {
+    await pubClient.publish(
+      "region_code",
+      JSON.stringify({
+        room: region_code,
+        event: "list",
+        data: meetingList,
       })
     );
-    await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(addActiveTimeList));
   }
-
-  await pubClient.publish(
-    "region_code",
-    JSON.stringify({
-      room: region_code,
-      event: "list",
-      data: meetingList,
-    })
-  );
 };
 
 // 모임 생성
@@ -355,6 +360,11 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
       })
     );
 
+    const meetingListcache = await getAsync(`meetingList:${region_code}`);
+
+    let meetingList = meetingListcache ? JSON.parse(meetingListcache) : await moimModel.getMeetingList({ region_code });
+    handleActiveTimeMeeting({ pubClient, getAsync, meetingList, region_code, setExAsync });
+
     const messages = await moimModel.getMessages({ meetings_id: meetings_id });
 
     setExAsync(`messages:${region_code}:${meetings_id}`, 3600, JSON.stringify(messages));
@@ -408,6 +418,35 @@ exports.getUsersInRoom = (io, roomId) => {
 const handleDecryptMessages = (data) => {
   console.log("data", data);
   return data.map((v) => ({ ...v, contents: decryptMessage(v.contents) }));
+};
+
+const handleActiveTimeMeeting = async ({ pubClient, getAsync, setExAsync, meetingList, region_code }) => {
+  const addActiveTimeList = await Promise.all(
+    meetingList.map(async (v) => {
+      const { id } = v;
+
+      const meetingsUserData = await getAsync(`meetingsUsers:${region_code}:${id}`);
+
+      const max_active_time_item = JSON.parse(meetingsUserData)
+        ?.map((v) => v.last_active_time)
+        .sort((a, b) => new Date(b) - new Date(a))[0];
+
+      return { ...v, last_active_time: max_active_time_item };
+    })
+  );
+
+  // return addActiveTimeList;
+
+  await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(addActiveTimeList));
+
+  await pubClient.publish(
+    "region_code",
+    JSON.stringify({
+      room: region_code,
+      event: "list",
+      data: addActiveTimeList,
+    })
+  );
 };
 
 // module.exports = { handleEnterMeeting, getMyList };
