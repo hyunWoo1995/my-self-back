@@ -16,17 +16,7 @@ const User = {
     const [result] = await db.query(
       `INSERT INTO users (email, password, nickname, birthdate, gender, provider, provider_id, profile_image_name, ip) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        email,
-        password,
-        nickname,
-        birthdate,
-        gender,
-        provider,
-        provider_id,
-        profileImageName,
-        ip,
-      ]
+      [email, password, nickname, birthdate, gender, provider, provider_id, profileImageName, ip]
     );
     return result.insertId;
   },
@@ -70,9 +60,7 @@ const User = {
 
   // 닉네임으로 사용자 찾기
   async findByNickname(nickname) {
-    const [rows] = await db.query("SELECT * FROM users WHERE nickname = ?", [
-      nickname,
-    ]);
+    const [rows] = await db.query("SELECT * FROM users WHERE nickname = ?", [nickname]);
     return rows[0];
   },
 
@@ -80,6 +68,12 @@ const User = {
   async findByUser(id) {
     const [rows] = await db.query("SELECT * FROM users WHERE id = ?", [id]);
     return rows[0];
+  },
+
+  // 이메일 가져오기
+  async findByUserEmail(id) {
+    const [rows] = await db.query("SELECT email FROM users WHERE id = ?", [id]);
+    return rows[0].email;
   },
 };
 
