@@ -206,7 +206,7 @@ exports.handleJoinRegion = async ({ socket, pubClient, getAsync, setExAsync }, {
 
     // console.log("addActiveTimeList", addActiveTimeList);
     // await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(addActiveTimeList));
-    handleActiveTimeMeeting({ meetingList, getAsync, pubClient, setExAsync, region_code });
+    handleActiveTimeMeeting({ meetingList, getAsync, pubClient, setExAsync, region_code, meetings_id });
   } else {
     await pubClient.publish(
       "region_code",
@@ -363,7 +363,7 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
     const meetingListcache = await getAsync(`meetingList:${region_code}`);
 
     let meetingList = meetingListcache ? JSON.parse(meetingListcache) : await moimModel.getMeetingList({ region_code });
-    handleActiveTimeMeeting({ pubClient, getAsync, meetingList, region_code, setExAsync });
+    handleActiveTimeMeeting({ pubClient, getAsync, meetingList, region_code, setExAsync, meetings_id });
 
     const messages = await moimModel.getMessages({ meetings_id: meetings_id });
 
@@ -420,20 +420,20 @@ const handleDecryptMessages = (data) => {
   return data.map((v) => ({ ...v, contents: decryptMessage(v.contents) }));
 };
 
-const handleActiveTimeMeeting = async ({ pubClient, getAsync, setExAsync, meetingList, region_code }) => {
-  const addActiveTimeList = await Promise.all(
-    meetingList.map(async (v) => {
-      const { id } = v;
+const handleActiveTimeMeeting = async ({ pubClient, getAsync, setExAsync, meetingList, region_code, meetings_id }) => {
+  const meetingsUserData = await getAsync(`meetingsUsers:${region_code}:${meetings_id}`);
 
-      const meetingsUserData = await getAsync(`meetingsUsers:${region_code}:${id}`);
-
+  const addActiveTimeList = meetingList.map((v) => {
+    if (v.id === meetings_id) {
       const max_active_time_item = JSON.parse(meetingsUserData)
         ?.map((v) => v.last_active_time)
         .sort((a, b) => new Date(b) - new Date(a))[0];
 
       return { ...v, last_active_time: max_active_time_item };
-    })
-  );
+    } else {
+      return v;
+    }
+  });
 
   // return addActiveTimeList;
 
