@@ -1,7 +1,15 @@
-// 태그 추가
+const messageTemplate = {
+  app_id: process.env.ONESIGNAL_APP_ID,
+  target_channel: "push",
+  headings: { en: "moimmoim", ko: "모임모임" },
+};
 
-const handleOnesignalTags = async ({ onesignal_id, meetings_id, users_id }) => {
-  const res = axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`);
+// 태그 추가
+const { default: axios } = require("axios");
+const { getMeetingItem } = require("../../model/moimModel");
+
+exports.handleOnesignalTags = async ({ onesignal_id, meetings_id, users_id }) => {
+  const res = await axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`);
 
   const { tags } = res.data.properties;
 
@@ -29,4 +37,21 @@ const handleOnesignalTags = async ({ onesignal_id, meetings_id, users_id }) => {
   }
 };
 
-module.exports = { handleOnesignalTags };
+exports.handleOnesignalNotification = async ({ meetings_id, users_id, contents }) => {
+  const meetingData = await getMeetingItem({ meetings_id });
+
+  axios.post(
+    "https://api.onesignal.com/notifications",
+    {
+      ...messageTemplate,
+      contents: { en: contents || "", ko: contents || "" },
+      subtitle: { en: meetingData.name, ko: meetingData.name },
+      filters: [{ field: "tag", key: "meetings_id", relation: "exists", value: meetings_id, field: "tag", key: "user_id", relation: "!=", value: users_id }],
+    },
+    {
+      headers: {
+        authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+      },
+    }
+  );
+};

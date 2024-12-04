@@ -1,9 +1,9 @@
 const { createClient } = require("redis");
 const { promisify } = require("util"); // Import promisify
 const { createAdapter } = require("@socket.io/redis-adapter");
-const moimModel = require("../../src/model/moimModel");
+const moimModel = require("../../model/moimModel");
 const { default: axios } = require("axios");
-const { decryptMessage } = require("../../src/utils/aes");
+const { decryptMessage } = require("../../utils/aes");
 
 class ChatService {
   constructor(io) {
@@ -199,7 +199,7 @@ class ChatService {
 
   async handleEnterMeeting(socket, { region_code, meetings_id, users_id, type, onesignal_id }) {
     try {
-      const meetingRoom = `${region_code}-${meetings_id}`;
+      const meetingRoom = `${region_code}:${meetings_id}`;
       socket.join(meetingRoom);
       socket.data.userId = users_id;
 

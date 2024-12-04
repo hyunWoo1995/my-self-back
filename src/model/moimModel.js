@@ -22,6 +22,13 @@ exports.getMeetingList = async ({ region_code }) => {
   return rows;
 };
 
+// 단일 모임 조회
+exports.getMeetingItem = async ({ meetings_id }) => {
+  const [rows] = await db.query("select * from meetings where id = ?", [meetings_id]);
+
+  return rows;
+};
+
 // 나의 모임 조회
 exports.getMyList = async ({ users_id }) => {
   const [rows] = await db.query("select * from meetings_users where users_id = ?", [users_id]);
@@ -41,7 +48,6 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
   const [existingData] = await db.query("SELECT * FROM meetings_users WHERE meetings_id = ? AND users_id = ?", [meetings_id, users_id]);
 
   if (existingData.length > 0) {
-    // Update 쿼리: 특정 users_id만 업데이트
     const [rows] = await db.query("UPDATE meetings_users SET status = ?, last_active_time = ? WHERE meetings_id = ? AND users_id = ?", [
       type === 3 || creator ? 1 : 0,
       new Date(),
@@ -50,7 +56,6 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
     ]);
     return rows;
   } else {
-    // Insert 쿼리
     const [rows] = await db.query("INSERT INTO meetings_users (meetings_id, users_id, status, last_active_time) VALUES (?, ?, ?, ?)", [
       meetings_id,
       users_id,
