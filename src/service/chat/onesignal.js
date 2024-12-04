@@ -39,6 +39,7 @@ exports.handleOnesignalTags = async ({ onesignal_id, meetings_id, users_id }) =>
 
 exports.handleOnesignalNotification = async ({ meetings_id, users_id, contents }) => {
   const meetingData = await getMeetingItem({ meetings_id });
+  console.log("meetingData", meetingData);
 
   axios.post(
     "https://api.onesignal.com/notifications",

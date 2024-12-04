@@ -26,7 +26,7 @@ exports.getMeetingList = async ({ region_code }) => {
 exports.getMeetingItem = async ({ meetings_id }) => {
   const [rows] = await db.query("select * from meetings where id = ?", [meetings_id]);
 
-  return rows;
+  return rows[0];
 };
 
 // 나의 모임 조회
