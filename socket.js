@@ -6,91 +6,20 @@ const { isAfterDate } = require("./src/utils/date");
 const { findByUser } = require("./src/model/userModel");
 const { encryptMessage, decryptMessage } = require("./src/utils/aes");
 const { default: axios } = require("axios");
+const socketService = require("./src/service/chat/redis");
 
 let typingUsers = [];
 const typingTimers = {}; // To store timers for each user
 
 // socket.js
 module.exports = async (io) => {
-  const pubClient = createClient({
-    url: `redis://${process.env.REDIS_USERNAME}:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}/0`,
-    legacyMode: true, // 반드시 설정 !!
-  });
-
-  const getAsync = promisify(pubClient.get).bind(pubClient);
-  const setExAsync = promisify(pubClient.setEx).bind(pubClient);
-
-  const subClient = createClient({
-    url: `redis://${process.env.REDIS_USERNAME}:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}/0`,
-    legacyMode: true, // 반드시 설정 !!
-  });
-
-  await Promise.all([pubClient.connect(), subClient.connect()]).catch((err) => {
-    console.error("Error connecting Redis clients:", err);
-    process.exit(1);
-  });
-
-  pubClient.on("error", (err) => {
-    console.error("Redis PubClient Error:", err);
-  });
-
-  subClient.on("error", (err) => {
-    console.error("Redis SubClient Error:", err);
-  });
-
-  subClient.v4.subscribe("message", (message) => {
-    try {
-      const parsedMessage = JSON.parse(message);
-      io.to(parsedMessage.room).emit(parsedMessage.event, parsedMessage.data);
-    } catch (error) {
-      console.error("Error parsing Redis message:", error);
-    }
-  });
-
-  subClient.v4.subscribe("region_code", (message) => {
-    console.log("Received message from channel 'redistest':", message);
-    try {
-      const parsedMessage = JSON.parse(message);
-      io.to(parsedMessage.room).emit(parsedMessage.event, parsedMessage.data);
-    } catch (error) {
-      console.error("Error parsing Redis message:", error);
-    }
-  });
-
-  subClient.v4.subscribe("meetingRoom", (message) => {
-    console.log("Received message from channel 'redistest':", message);
-    try {
-      const parsedMessage = JSON.parse(message);
-      io.to(parsedMessage.room).emit(parsedMessage.event, parsedMessage.data);
-    } catch (error) {
-      console.error("Error parsing Redis message:", error);
-    }
-  });
-
-  // Attach Redis adapter to Socket.IO
-  io.adapter(createAdapter(pubClient.duplicate(), subClient.duplicate()));
-  // Subscribe to Redis channels for region updates
-  // subClient.on("message", (channel, message) => {
-  //
-  //   try {
-  //     const parsedMessage = JSON.parse(message);
-  //
-
-  //     // Check message type and emit to clients
-  //     if (parsedMessage.type === "listUpdate") {
-  //       io.to(channel).emit("list", parsedMessage.data);
-  //     } else if (parsedMessage.type === "newMessage") {
-  //       io.to(channel).emit("receiveMessage", parsedMessage.data);
-  //     }
-  //   } catch (error) {
-  //
-  //   }
-  // });
+  const { pubClient, getAsync, setExAsync } = await socketService.initRedis(io);
 
   io.on("connection", (socket) => {
-    socket.emit("message", socket.id);
+    socket.emit("message", socket.ird);
 
     const enterMeeting = async ({ region_code, meetings_id, users_id, type, onesignal_id }) => {
+      console.log("samkmdas", region_code);
       try {
         const meetingRoom = `${region_code}-${meetings_id}`;
         socket.join(meetingRoom);
@@ -156,38 +85,36 @@ module.exports = async (io) => {
 
           meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
 
+          console.log("onesignal_idonesignal_id,", onesignal_id);
+
           if (onesignal_id) {
-            try {
-              axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`).then((res1) => {
-                console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
+            axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`).then((res1) => {
+              console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
 
-                if (res1.data.properties.tags) {
-                  const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), meetings_id].map((v) => String(v)).filter((v, i, arr) => arr.indexOf(v) === i);
+              if (res1.data.properties.tags) {
+                const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), meetings_id].map((v) => String(v)).filter((v, i, arr) => arr.indexOf(v) === i);
 
-                  console.log("meetings_idsmeetings_ids", meetings_ids);
-                  axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
-                    properties: {
-                      tags: {
-                        ...res1.data.properties.tags,
-                        meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
-                        user_id: users_id,
-                      },
+                console.log("meetings_idsmeetings_ids", meetings_ids);
+                axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
+                  properties: {
+                    tags: {
+                      ...res1.data.properties.tags,
+                      meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
+                      user_id: users_id,
                     },
-                  });
-                } else {
-                  axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
-                    properties: {
-                      tags: {
-                        meetings_id: meetings_id,
-                        user_id: users_id,
-                      },
+                  },
+                });
+              } else {
+                axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${onesignal_id}`, {
+                  properties: {
+                    tags: {
+                      meetings_id: meetings_id,
+                      user_id: users_id,
                     },
-                  });
-                }
-              });
-            } catch (err) {
-              console.error("onesignal_id user find  err", err);
-            }
+                  },
+                });
+              }
+            });
           }
           await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
 
@@ -322,19 +249,46 @@ module.exports = async (io) => {
       // Check Redis cache for meeting list
       pubClient.get(`meetingList:${region_code}`, async (err, result) => {
         if (result) {
+          console.log("pubClient meetingList res", result);
+
+          const addActiveTimeResult = result.map(async (v) => {
+            const { id } = v;
+
+            return { ...v };
+          });
+
           // io.to(region_code).emit("list", JSON.parse(result));
           pubClient.publish(
             "region_code",
             JSON.stringify({
               room: region_code,
               event: "list",
-              data: JSON.parse(result),
+              data: JSON.parse(addActiveTimeResult),
             })
           );
         } else {
           const res = await moimModel.getMeetingList({ region_code: region_code });
 
-          pubClient.setEx(`meetingList:${region_code}`, 3600, JSON.stringify(res)); // Cache for 1 hour
+          console.log("getMeetingList res", res);
+
+          const addActiveTimeRes = await Promise.all(
+            res.map(async (v) => {
+              const { id } = v;
+              const meetingsUserData = await getAsync(`meetingsUsers:${region_code}:${id}`);
+
+              const max_active_time_item = JSON.parse(meetingsUserData)
+                ?.map((v) => v.last_active_time)
+                .sort((a, b) => new Date(b) - new Date(a))[0];
+
+              console.log("max_active_time_item", max_active_time_item);
+
+              return { ...v, last_active_time: max_active_time_item };
+            })
+          );
+
+          console.log("addActiveTimeRes", addActiveTimeRes);
+
+          pubClient.setEx(`meetingList:${region_code}`, 3600, JSON.stringify(addActiveTimeRes)); // Cache for 1 hour
 
           // io.to(region_code).emit("list", res);
 
@@ -343,7 +297,7 @@ module.exports = async (io) => {
             JSON.stringify({
               room: region_code,
               event: "list",
-              data: res,
+              data: addActiveTimeRes,
             })
           );
         }
@@ -367,35 +321,35 @@ module.exports = async (io) => {
       });
 
       if (res.affectedRows > 0) {
-        if (data?.onesignal_id) {
-          axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`).then((res1) => {
-            console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
+        // if (data?.onesignal_id) {
+        //   axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`).then((res1) => {
+        //     console.log("onesignal res", res1.data.properties.tags, typeof res1.data.properties.tags);
 
-            if (res1.data.properties.tags) {
-              const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), res.insertId].filter((v, i, arr) => arr.indexOf(v) === i);
+        //     if (res1.data.properties.tags) {
+        //       const meetings_ids = [...res1.data.properties.tags.meetings_id.split(","), res.insertId].filter((v, i, arr) => arr.indexOf(v) === i);
 
-              console.log("meetings_idsmeetings_ids", meetings_ids);
-              axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
-                properties: {
-                  tags: {
-                    ...res1.data.properties.tags,
-                    meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
-                    user_id: data.users_id,
-                  },
-                },
-              });
-            } else {
-              axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
-                properties: {
-                  tags: {
-                    meetings_id: String(res.insertId),
-                    user_id: data.users_id,
-                  },
-                },
-              });
-            }
-          });
-        }
+        //       console.log("meetings_idsmeetings_ids", meetings_ids);
+        //       axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
+        //         properties: {
+        //           tags: {
+        //             ...res1.data.properties.tags,
+        //             meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
+        //             user_id: data.users_id,
+        //           },
+        //         },
+        //       });
+        //     } else {
+        //       axios.patch(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/onesignal_id/${data.onesignal_id}`, {
+        //         properties: {
+        //           tags: {
+        //             meetings_id: String(res.insertId),
+        //             user_id: data.users_id,
+        //           },
+        //         },
+        //       });
+        //     }
+        //   });
+        // }
 
         // Add the user to the new meeting
         await moimModel.enterMeeting({

@@ -1,4 +1,5 @@
 const moimModel = require("../model/moimModel");
+const { decryptMessage } = require("../utils/aes");
 
 exports.getCategories = async (req, res) => {
   try {
@@ -15,5 +16,7 @@ exports.getMoreMessage = async (req, res) => {
 
   const result = await moimModel.getMoreMessage({ meetings_id, length });
 
-  res.status(200).json({ DATA: { list: result } });
+  const decryptMessages = result.map((v) => ({ ...v, contents: decryptMessage(v.contents) }));
+
+  res.status(200).json({ DATA: { list: decryptMessages } });
 };
