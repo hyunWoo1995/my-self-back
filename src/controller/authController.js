@@ -156,6 +156,7 @@ const authController = {
       const emailInfo = await mailSand(mailOptions);
       res.sendSuccess(`Email sent successfully! Response: ${emailInfo}`);
     } catch (error) {
+      console.log("error", error);
       res.sendError();
     }
   },
@@ -165,6 +166,7 @@ const authController = {
       return res.status(400).json({ message: "필수값 확인하세요." });
     try {
       const storedCode = await getEmailAuthCode(email);
+      console.log("storedCode", storedCode);
       if (storedCode === code) {
         // 인증 성공
         await redisClient.del(`emailAuthCode:${email}`); // 인증 후 코드를 삭제
@@ -174,20 +176,28 @@ const authController = {
         res.sendError(201, "인증 실패");
       }
     } catch (error) {
+      console.log("error", error);
       res.sendError();
     }
   },
   //회원 가입
   async register(req, res) {
     try {
-      const { email, password, passwordCheck, nickname, birthdate, interests, addresses } = req.body;
+      const {
+        email,
+        password,
+        passwordCheck,
+        nickname,
+        birthdate,
+        interests,
+        addresses,
+      } = req.body;
       // interests 배열 및 addresses 배열 파싱
       // const interests = req.body.interests.map(Number);
       // const addresses = req.body.addresses.map((address) => ({
       //   address: address.address,
       //   address_code: address.address_code,
       // }));
-      console.log('req.body' , req.body)
       const ip = req.ip || req.connection.remoteAddress;
       // 이메일 중복 확인
       let existingUser = await userModel.findByEmail(email);
@@ -253,7 +263,7 @@ const authController = {
   },
 
   async confirmNickname(req, res) {
-    const { nickname } = req.body;
+    const { nickname } = req.query;
     try {
       const existingUser = await userModel.findByNickname(nickname);
       if (existingUser) {
@@ -261,10 +271,11 @@ const authController = {
       }
       res.sendSuccess("닉네임 사용가능");
     } catch (error) {
+      console.log("error", error);
       res.sendError();
     }
   },
-  
+
   // moimmoim 회원로그인
   async login(req, res) {
     const { email, password } = req.body;
@@ -304,6 +315,7 @@ const authController = {
     const ip = req.ip || req.connection.remoteAddress;
     const { code } = req.query;
     const provider = req.params.provider; // 'kakao', 'google', 'apple' 등 서비스 이름을 URL에서 받음
+    console.log("provider", provider);
     try {
       // 각 서비스별 클라이언트 ID, 비밀, 토큰 URL 등 매핑 설정
       const config = getProviderConfig(provider);
@@ -329,20 +341,27 @@ const authController = {
       const userResponse = await axios.get(config.user_info_url, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const userData = userResponse.data;
+      const userData = userResponse.data?.kakao_account;
+      console.log("userData", userData);
+
       const email =
         userData.email || `${provider}_${userData.id}@${provider}.com`; // 이메일이 없으면 고유 ID로 설정
-      let user = await userModel.findByEmail(email);
+      let user = await userModel.findByEmail(email, provider);
+      const birthdate = `${userData.birthyear.slice(2)}${userData.birthday}`;
+      const nickname = userData.name;
 
       // 3. 기존 사용자가 없으면 회원가입 처리
       if (!user) {
-        res.redirect(`${process.env.FRONTEND_URL}/sign?email=${email}`);
+        res.redirect(
+          `${process.env.FRONTEND_URL}/sign?email=${email}&birthdate=${birthdate}&nickname=${nickname}`
+        );
       } else {
         // const accessToken = jwt.sign(user);
         // const refreshToken = jwt.refresh(user);
         res.redirect(`${process.env.FRONTEND_URL}`);
       }
     } catch (error) {
+      console.log("error", error);
       res.sendError(500, `${provider} 로그인 중 서버 에러가 발생했습니다.`);
     }
   },
