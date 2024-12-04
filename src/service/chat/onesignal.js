@@ -18,7 +18,7 @@ exports.handleOnesignalTags = async ({ email, meetings_id, users_id }) => {
   const { tags } = res.data.properties;
 
   if (tags) {
-    const meetings_ids = [...tags.meetings_id.split(","), meetings_id].map((v) => String(v)).filter((v, i, arr) => arr.indexOf(v) === i);
+    // const meetings_ids = [...tags.meetings_id.split(","), meetings_id].map((v) => String(v)).filter((v, i, arr) => arr.indexOf(v) === i);
 
     axios.patch(
       `https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/external_id/${email}`,
@@ -26,7 +26,7 @@ exports.handleOnesignalTags = async ({ email, meetings_id, users_id }) => {
         properties: {
           tags: {
             ...tags,
-            meetings_id: meetings_ids.join(",").replaceAll(" ", ""),
+            [meetings_id]: true,
             user_id: users_id,
           },
         },
@@ -43,7 +43,7 @@ exports.handleOnesignalTags = async ({ email, meetings_id, users_id }) => {
       {
         properties: {
           tags: {
-            meetings_id: meetings_id,
+            [meetings_id]: true,
             user_id: users_id,
           },
         },
@@ -67,7 +67,7 @@ exports.handleOnesignalNotification = async ({ meetings_id, users_id, contents }
       ...messageTemplate,
       contents: { en: contents || "", ko: contents || "" },
       subtitle: { en: meetingData.name, ko: meetingData.name },
-      filters: [{ field: "tag", key: "meetings_id", relation: "exists", value: meetings_id }, { operator: "AND" }, { field: "tag", key: "user_id", relation: "!=", value: users_id }],
+      filters: [{ field: "tag", key: meetings_id, relation: "=", value: true }, { operator: "AND" }, { field: "tag", key: "user_id", relation: "!=", value: users_id }],
     },
     {
       headers: {
