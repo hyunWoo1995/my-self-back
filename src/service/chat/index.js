@@ -285,16 +285,6 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
 
       fcm.handleSubscribeTopic({ token: fcmToken, topic: meetings_id });
 
-      messaging
-        .getToken(fcmToken)
-        .then((response) => {
-          console.log("FCM Token:", response.token);
-          console.log("Subscribed Topics:", response.topics);
-        })
-        .catch((error) => {
-          console.log("Error fetching FCM token:", error);
-        });
-
       const [meetingsUsersCache, userInfo, meetingList, meetingData] = await Promise.all([
         getAsync(`meetingsUsers:${region_code}:${meetings_id}`),
         findByUser(users_id),

@@ -34,12 +34,6 @@ app.use(express.static(publicDirectoryPath));
 
 // 소켓 설정 초기화
 setupSocket(io);
-fcm.oneSendMessage({
-  title: "모임모임",
-  subtitle: "채팅방1",
-  body: "하이!",
-  token: "fevcXn7UZkDmqqUdnBpld_:APA91bGcCyy2OMJyO9PIlqFJy0eBjeUDyIz4xEAqmaVkQVybjftiO6OA8lFpRHbEXb3le-5rJLX-8hHptiCVJCFDKhq7-AEsGyQacQBNaMVEjgwtnnG7IeM",
-});
 
 // Body Parser Middleware
 app.use(bodyParser.urlencoded({ extended: true }));

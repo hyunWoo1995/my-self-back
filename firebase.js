@@ -79,16 +79,6 @@ const handleSubscribeTopic = ({ topic, token }) => {
     .catch((error) => {
       console.log("Error subscribing to topic:", error);
     });
-
-  messaging
-    .getToken(token)
-    .then((response) => {
-      console.log("FCM Token:", response.token);
-      console.log("Subscribed Topics:", response.topics);
-    })
-    .catch((error) => {
-      console.log("Error fetching FCM token:", error);
-    });
 };
 
 const handleUnSubscribeTopic = ({ topic, token }) => {
