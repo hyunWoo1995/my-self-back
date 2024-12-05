@@ -187,3 +187,23 @@ exports.getMeetingsUsers = async ({ meetings_id }) => {
 
   return rows;
 };
+
+// 모임 좋아요
+exports.handleLikeMeeting = async ({ users_id, meetings_id }) => {
+  const [existingData] = await db.query("select * from like_history where meetings_id = ? and users_id = ?", [meetings_id, users_id]);
+
+  if (existingData.length > 0) {
+    const [rows] = await db.query("update like_history set status = ?, updated_at = ? where meetings_id = ? and users_id = ?", [
+      existingData[0].status === "active" ? "inactive" : "active",
+      new Date(),
+      meetings_id,
+      users_id,
+    ]);
+
+    return rows;
+  } else {
+    const [rows] = await db.query("insert into like_history (type, sender_id, receiver_id, status, created_at) values (?,?,?,?,?)", ["meeting", users_id, meetings_id, "active", new Date()]);
+
+    return rows;
+  }
+};

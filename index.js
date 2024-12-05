@@ -14,6 +14,7 @@ const userRouter = require("./src/routes/user");
 const moimRouter = require("./src/routes/moim");
 const configRouter = require("./src/routes/config");
 const socketIo = require("socket.io");
+const fcm = require("./firebase");
 const setupSocket = require("./socket");
 // const setupSocket = require("./service/chat/index");
 const path = require("path");
@@ -33,6 +34,12 @@ app.use(express.static(publicDirectoryPath));
 
 // 소켓 설정 초기화
 setupSocket(io);
+fcm.oneSendMessage({
+  title: "모임모임",
+  subtitle: "채팅방1",
+  body: "하이!",
+  token: "fevcXn7UZkDmqqUdnBpld_:APA91bGcCyy2OMJyO9PIlqFJy0eBjeUDyIz4xEAqmaVkQVybjftiO6OA8lFpRHbEXb3le-5rJLX-8hHptiCVJCFDKhq7-AEsGyQacQBNaMVEjgwtnnG7IeM",
+});
 
 // Body Parser Middleware
 app.use(bodyParser.urlencoded({ extended: true }));

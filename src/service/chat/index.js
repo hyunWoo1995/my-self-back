@@ -2,6 +2,7 @@ const moimModel = require("../../model/moimModel");
 const { findByUser, findByUserEmail } = require("../../model/userModel");
 const { decryptMessage, encryptMessage } = require("../../utils/aes");
 const onesignal = require("./onesignal");
+const fcm = require("../../../firebase");
 
 let typingUsers = [];
 const typingTimers = {}; // To store timers for each user
@@ -67,7 +68,7 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
 
       // if (onesignal_id) {
 
-      const email = await findByUserEmail(users_id);
+      // const email = await findByUserEmail(users_id);
       // onesignal.handleOnesignalTags({ email, meetings_id, users_id });
       // }
 
@@ -271,16 +272,28 @@ exports.handleGenerateMeeting = async ({ socket, pubClient, getAsync, setExAsync
 };
 
 // 모임 입장 신청
-exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, users_id, meetings_id, type, onesignal_id }) => {
+exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, users_id, meetings_id, type, fcmToken }) => {
   try {
     const enterRes = await moimModel.enterMeeting({ meetings_id, users_id, type });
 
     if (enterRes.CODE === "EM000") {
       // if (onesignal_id) {
 
-      const email = await findByUserEmail(users_id);
+      // const email = await findByUserEmail(users_id);
       // onesignal.handleOnesignalTags({ email, meetings_id, users_id });
       // }
+
+      fcm.handleSubscribeTopic({ token: fcmToken, topic: meetings_id });
+
+      messaging
+        .getToken(fcmToken)
+        .then((response) => {
+          console.log("FCM Token:", response.token);
+          console.log("Subscribed Topics:", response.topics);
+        })
+        .catch((error) => {
+          console.log("Error fetching FCM token:", error);
+        });
 
       const [meetingsUsersCache, userInfo, meetingList, meetingData] = await Promise.all([
         getAsync(`meetingsUsers:${region_code}:${meetings_id}`),
@@ -330,7 +343,7 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
 
     setExAsync(`myList:${users_id}`, 3600, JSON.stringify(myList));
 
-    await this.handleEnterMeeting({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, users_id, type, onesignal_id });
+    await this.handleEnterMeeting({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, users_id, type });
   } catch (err) {
     console.error("handleJoinMeeting error", err);
   }
@@ -354,7 +367,9 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
 
   // 전송 성공
   if (res.affectedRows > 0) {
-    onesignal.handleOnesignalNotification({ meetings_id, users_id, contents });
+    // onesignal.handleOnesignalNotification({ meetings_id, users_id, contents });
+    const meetingData = await moimModel.getMeetingItem({ meetings_id });
+    fcm.topicSendMeesage({ subtitle: meetingData.name, body: contents, topic: meetings_id });
 
     const usersInRoom = this.getUsersInRoom(io, meetingRoom);
 

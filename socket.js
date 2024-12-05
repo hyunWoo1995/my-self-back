@@ -39,8 +39,8 @@ module.exports = async (io) => {
     });
 
     // 모임 입장 신청
-    socket.on("joinMeeting", ({ meetings_id, onesignal_id, region_code, type, users_id }) =>
-      socketService.handleJoinMeeting({ socket, pubClient, getAsync, setExAsync, io }, { meetings_id, onesignal_id, region_code, type, users_id })
+    socket.on("joinMeeting", ({ meetings_id, fcmToken, region_code, type, users_id }) =>
+      socketService.handleJoinMeeting({ socket, pubClient, getAsync, setExAsync, io }, { meetings_id, fcmToken, region_code, type, users_id })
     );
     // 메시지 수신 및 전파 (Send message to a meeting room)
     socket.on("sendMessage", ({ region_code, meetings_id, contents, users_id }) =>

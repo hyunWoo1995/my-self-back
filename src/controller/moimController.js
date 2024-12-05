@@ -20,3 +20,15 @@ exports.getMoreMessage = async (req, res) => {
 
   res.status(200).json({ DATA: { list: decryptMessages } });
 };
+
+exports.handleLikeMeeting = async (req, res) => {
+  const { meetings_id, users_id } = req.body;
+
+  const result = await moimModel.handleLikeMeeting({ users_id, meetings_id });
+
+  if (result.affectedRows > 0) {
+    res.sendSuccess("성공");
+  } else {
+    res.sendError("실패");
+  }
+};
