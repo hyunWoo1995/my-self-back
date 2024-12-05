@@ -68,7 +68,7 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
       // if (onesignal_id) {
 
       const email = await findByUserEmail(users_id);
-      onesignal.handleOnesignalTags({ email, meetings_id, users_id });
+      // onesignal.handleOnesignalTags({ email, meetings_id, users_id });
       // }
 
       await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
@@ -279,7 +279,7 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
       // if (onesignal_id) {
 
       const email = await findByUserEmail(users_id);
-      onesignal.handleOnesignalTags({ email, meetings_id, users_id });
+      // onesignal.handleOnesignalTags({ email, meetings_id, users_id });
       // }
 
       const [meetingsUsersCache, userInfo, meetingList, meetingData] = await Promise.all([

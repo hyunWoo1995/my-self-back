@@ -9,13 +9,15 @@ const { default: axios } = require("axios");
 const { getMeetingItem } = require("../../model/moimModel");
 
 exports.handleOnesignalTags = async ({ email, meetings_id, users_id }) => {
+  try {
+
   const res = await axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/external_id/${email}`, {
     headers: {
       Authorization: process.env.ONESIGNAL_API_KEY,
     },
   });
-
   const { tags } = res.data.properties;
+
 
   if (tags) {
     // const meetings_ids = [...tags.meetings_id.split(","), meetings_id].map((v) => String(v)).filter((v, i, arr) => arr.indexOf(v) === i);
@@ -55,9 +57,18 @@ exports.handleOnesignalTags = async ({ email, meetings_id, users_id }) => {
       }
     );
   }
+
+} catch (err) {
+  console.error('handleOnesignalTags',err)
+}
+
+
+
 };
 
 exports.handleOnesignalNotification = async ({ meetings_id, users_id, contents }) => {
+  try {
+
   const meetingData = await getMeetingItem({ meetings_id });
   console.log("meetingData", meetingData);
 
@@ -75,4 +86,8 @@ exports.handleOnesignalNotification = async ({ meetings_id, users_id, contents }
       },
     }
   );
+} catch (err) {
+  console.error('handleOnesignalNotification',err)
+}
+
 };
