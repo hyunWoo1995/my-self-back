@@ -14,10 +14,10 @@ const authJWT = async (req, res, next) => {
       next();
     } else {
       // 검증에 실패하거나 토큰이 만료되었다면 클라이언트에게 메세지를 담아서 응답합니다.
-      res.sendError(401, result.message)
+      res.sendError(401, result.message);
     }
   } else {
-    res.sendError(401, '토큰이 없습니다.')// jwt가 만료되었다면 메세지는 'jwt expired'입니다.
+    res.sendError(401, "토큰이 없습니다."); // jwt가 만료되었다면 메세지는 'jwt expired'입니다.
   }
 };
 

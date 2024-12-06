@@ -7,6 +7,7 @@ const axios = require("axios");
 const mailSand = require("../utils/nodemailer");
 const azureUtil = require("../utils/azureUtil");
 const dotenv = require("dotenv");
+const { handleUnSubscribeTopic, subscribeUserToTopic } = require("../../firebase");
 dotenv.config(); // .env가져오기
 
 const getAuthUrl = (provider) => {
@@ -128,9 +129,7 @@ const authController = {
     try {
       const decoded = await jwt.refreshVerify(refreshToken);
       if (decoded) {
-        const refreshToken = await getRedisData(
-          `refreshToken:${decoded.userId}`
-        );
+        const refreshToken = await getRedisData(`refreshToken:${decoded.userId}`);
         if (refreshToken) {
           const newAccessToken = jwt.sign({ id: decoded.userId });
           // 2. refresh token이 유효하면 새로운 access token 발급
@@ -172,8 +171,7 @@ const authController = {
   },
   async confirmEmail(req, res) {
     const { email, code } = req.body;
-    if (!email || !code)
-      return res.status(400).json({ message: "필수값 확인하세요." });
+    if (!email || !code) return res.status(400).json({ message: "필수값 확인하세요." });
     try {
       const storedCode = await getEmailAuthCode(email);
       console.log("storedCode", storedCode);
@@ -193,16 +191,7 @@ const authController = {
   //회원 가입
   async register(req, res) {
     try {
-      const {
-        email,
-        password,
-        passwordCheck,
-        nickname,
-        birthdate,
-        provider,
-        interests,
-        addresses,
-      } = req.body;
+      const { email, password, passwordCheck, nickname, birthdate, provider, interests, addresses } = req.body;
       // interests 배열 및 addresses 배열 파싱
       // const interests = req.body.interests.map(Number);
       // const addresses = req.body.addresses.map((address) => ({
@@ -252,11 +241,7 @@ const authController = {
         provider,
         ip,
       });
-      const resultInterest = await Promise.all(
-        interests.map((item) =>
-          userModel.createUserInterest({ user_id: userId, interest_id: item })
-        )
-      );
+      const resultInterest = await Promise.all(interests.map((item) => userModel.createUserInterest({ user_id: userId, interest_id: item })));
       const resultAddress = await Promise.all(
         // 지역코드 (RC0001~999) 있는지 없는지 체크후 있으면 등록 없으면 +1해서 등록.
         addresses.map(async (item) => {
@@ -268,9 +253,7 @@ const authController = {
           if (!rcCode) {
             // 가장 높은 address_code 가져오기
             const highestCode = await userModel.getHighestAddressCode();
-            const newCodeNumber = highestCode
-              ? parseInt(highestCode.replace("RC", ""), 10) + 1
-              : 1; // 기본값 1
+            const newCodeNumber = highestCode ? parseInt(highestCode.replace("RC", ""), 10) + 1 : 1; // 기본값 1
             console.log("highestCode", highestCode);
             console.log("newCodeNumber", newCodeNumber);
             rcCode = `RC${String(newCodeNumber).padStart(3, "0")}`; // "RC001" 형식 유지
@@ -307,7 +290,7 @@ const authController = {
 
   // moimmoim 회원로그인
   async login(req, res) {
-    const { email, password } = req.body;
+    const { email, password, fcmToken } = req.body;
     try {
       // 1. 사용자가 존재하는지 이메일로 찾기
       const user = await userModel.findByEmail(email);
@@ -319,6 +302,9 @@ const authController = {
       if (!isPasswordValid) {
         return res.sendError(401, "계정 정보가 틀렸습니다. 확인바랍니다.");
       }
+
+      subscribeUserToTopic({ fcmToken, users_id: user.id });
+
       const accessToken = jwt.sign(user);
       const refreshToken = jwt.refresh(user);
       res.sendSuccess("로그인 되었습니다.", { accessToken, refreshToken });
@@ -373,26 +359,18 @@ const authController = {
       const userData = userResponse.data?.kakao_account;
       console.log("userData", userData);
 
-      const email =
-        userData.email || `${provider}_${userData.id}@${provider}.com`; // 이메일이 없으면 고유 ID로 설정
+      const email = userData.email || `${provider}_${userData.id}@${provider}.com`; // 이메일이 없으면 고유 ID로 설정
       let user = await userModel.findByEmail(email, provider);
       const birthdate = `${userData.birthyear.slice(2)}${userData.birthday}`;
       const nickname = userData.name;
-      const gender = getResidentNumberFirstDigit(
-        userData.birthyear,
-        userData.gender
-      );
+      const gender = getResidentNumberFirstDigit(userData.birthyear, userData.gender);
       // 3. 기존 사용자가 없으면 회원가입 처리
       if (!user) {
-        res.redirect(
-          `${process.env.FRONTEND_URL}/sign?email=${email}&birthdate=${birthdate}&nickname=${nickname}&provider=${provider}&gender=${gender}`
-        );
+        res.redirect(`${process.env.FRONTEND_URL}/sign?email=${email}&birthdate=${birthdate}&nickname=${nickname}&provider=${provider}&gender=${gender}`);
       } else {
         const accessToken = jwt.sign(user);
         const refreshToken = jwt.refresh(user);
-        res.redirect(
-          `${process.env.FRONTEND_URL}?accessToken=${accessToken}&refreshToken=${refreshToken}`
-        );
+        res.redirect(`${process.env.FRONTEND_URL}?accessToken=${accessToken}&refreshToken=${refreshToken}`);
       }
     } catch (error) {
       console.log("error", error);

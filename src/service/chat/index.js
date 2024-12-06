@@ -8,7 +8,7 @@ let typingUsers = [];
 const typingTimers = {}; // To store timers for each user
 
 // 모임 입장
-exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, users_id, type }) => {
+exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, users_id, type, fcmToken }) => {
   try {
     const meetingRoom = `${region_code}:${meetings_id}`;
     socket.join(meetingRoom);
@@ -62,6 +62,10 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
     const isMember = target?.status === 1;
 
     if (isMember) {
+      if (fcmToken) {
+        fcm.handleSubscribeTopic({ token: fcmToken, topic: meetings_id });
+      }
+
       await moimModel.modifyActiveTime({ meetings_id, users_id });
 
       meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
@@ -382,7 +386,7 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
   if (res.affectedRows > 0) {
     // onesignal.handleOnesignalNotification({ meetings_id, users_id, contents });
     const meetingData = await moimModel.getMeetingItem({ meetings_id });
-    fcm.topicSendMeesage({ subtitle: meetingData.name, body: contents, topic: meetings_id });
+    fcm.topicSendMeesage({ subtitle: meetingData.name, body: contents, topic: meetings_id, sender_id: users_id });
 
     const usersInRoom = this.getUsersInRoom(io, meetingRoom);
 
