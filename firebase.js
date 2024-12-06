@@ -39,18 +39,18 @@ const oneSendMessage = ({ title = "moimmoim", subtitle, body, token }) => {
 
 const topicSendMeesage = ({ title = "moimmoim", subtitle, body, topic, sender_id }) => {
   console.log("topictopictopic", topic);
-  const condition = `\'room_${topic}\' in topics && \'sender_${sender_id}\' not in topics`;
+  // const condition = `\'room_${topic}\' in topics && \'sender_${sender_id}\' not in topics`;
 
-  console.log("condition", condition);
+  // console.log("condition", condition);
 
   // FCM 메시지 보내기
   const message = {
-    // topic: String(topic), // 채팅방 토픽
+    topic: String(topic), // 채팅방 토픽
     notification: {
       title: title,
       body: body,
     },
-    condition,
+    // condition,
     apns: {
       payload: {
         aps: {
