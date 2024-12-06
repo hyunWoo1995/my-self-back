@@ -223,7 +223,15 @@ exports.handleJoinRegion = async ({ socket, pubClient, getAsync, setExAsync }, {
 };
 
 // 모임 생성
-exports.handleGenerateMeeting = async ({ socket, pubClient, getAsync, setExAsync }, data) => {
+exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExAsync }, data) => {
+  if (data.name.length < 5 || data.name.length > 40 || data.description.length < 20 || data.description.length > 500) {
+    io.to(socket.id).emit("error", {
+      message: "모임 제목 또는 모임 설명이 조건에 맞지 않습니다.",
+      CODE: "GM001",
+    });
+    return;
+  }
+
   const res = await moimModel.generateMeeting({
     name: data.name,
     region_code: data.region_code,
@@ -276,6 +284,8 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
   try {
     const enterRes = await moimModel.enterMeeting({ meetings_id, users_id, type });
 
+    console.log("enterRes", enterRes);
+
     if (enterRes.CODE === "EM000") {
       // if (onesignal_id) {
 
@@ -283,7 +293,9 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
       // onesignal.handleOnesignalTags({ email, meetings_id, users_id });
       // }
 
-      fcm.handleSubscribeTopic({ token: fcmToken, topic: meetings_id });
+      if (fcmToken) {
+        fcm.handleSubscribeTopic({ token: fcmToken, topic: meetings_id });
+      }
 
       const [meetingsUsersCache, userInfo, meetingList, meetingData] = await Promise.all([
         getAsync(`meetingsUsers:${region_code}:${meetings_id}`),
@@ -327,6 +339,13 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
           event: "messages",
         })
       );
+    } else {
+      if (enterRes.CODE === "EM002") {
+        io.to(socket.id).emit("error", {
+          message: "입장 인원이 가득 찼습니다.",
+          CODE: "JM001",
+        });
+      }
     }
 
     const myList = await moimModel.getMyList({ users_id });
@@ -340,7 +359,7 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
 };
 
 // 메세지 보내기
-exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, contents, users_id }) => {
+exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, contents, users_id, reply_id }) => {
   const meetingRoom = `${region_code}:${meetings_id}`;
 
   const meetingsUsers = await getAsync(`meetingsUsers:${meetingRoom}`);
@@ -350,6 +369,7 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
     meetings_id,
     contents: encryptMessage(contents),
     users_id,
+    reply_id,
     users: JSON.parse(meetingsUsers)
       .map((v) => v.users_id)
       .join(","),

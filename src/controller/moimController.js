@@ -1,5 +1,7 @@
 const moimModel = require("../model/moimModel");
 const { decryptMessage } = require("../utils/aes");
+const redisService = require("../service/chat/redis");
+const { io } = require("../../index");
 
 exports.getCategories = async (req, res) => {
   try {
@@ -27,6 +29,22 @@ exports.handleLikeMeeting = async (req, res) => {
   const result = await moimModel.handleLikeMeeting({ users_id, meetings_id });
 
   if (result.affectedRows > 0) {
+    console.log("io", io);
+    // const { pubClient, getAsync, setExAsync } = await redisService.initRedis(io);
+
+    // const meetingListcache = await getAsync(`meetingList:${region_code}`);
+
+    // let meetingList = meetingListcache ? JSON.parse(meetingListcache) : await moimModel.getMeetingList({ region_code });
+
+    // await pubClient.publish(
+    //   "region_code",
+    //   JSON.stringify({
+    //     room: region_code,
+    //     event: "list",
+    //     data: meetingList,
+    //   })
+    // );
+
     res.sendSuccess("성공");
   } else {
     res.sendError("실패");

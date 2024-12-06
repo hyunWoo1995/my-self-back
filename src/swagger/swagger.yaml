@@ -129,7 +129,7 @@ paths:
       description: JWT 토큰을 사용하여 회원 정보를 조회합니다.
       security:
         - BearerAuth: []
-      
+
       responses:
         200:
           description: 회원 상세 정보
@@ -145,6 +145,45 @@ paths:
       responses:
         200:
           description: 모임 카테고리
+
+  /moim/getMoreMessage:
+    post:
+      tags:
+        - moim
+      summary: 채팅 메세지 더 불러오기
+      description: 채팅 메세지 더 불러오기
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                meetings_id:
+                  type: int
+                  example: 1
+                length:
+                  type: int
+                  example: 20
+  /moim/likeMoim:
+    post:
+      tags:
+        - moim
+      summary: 모임 좋아요
+      description: 모임 좋아요
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                meetings_id:
+                  type: int
+                  example: 1
+                users_id:
+                  type: int
+                  example: 2
 
 #스키마 설정
 components:

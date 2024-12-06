@@ -45,6 +45,15 @@ exports.generalMoimEnter = async ({ meetings_id, users_id }) => {
 
 // 모임 입장
 exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
+  const [{ count }] = await db.query("select count(id) as count from meetings_users where meetings_id = ?", [meetings_id]);
+
+  const [{ max_members }] = await db.query("select max_members from meetings where id =?", [meetings_id]);
+  console.log("ccc", count, limit_count);
+
+  if (count === max_members) {
+    return { CODE: "EM002" };
+  }
+
   const [existingData] = await db.query("SELECT * FROM meetings_users WHERE meetings_id = ? AND users_id = ?", [meetings_id, users_id]);
 
   if (existingData.length > 0) {
@@ -92,7 +101,7 @@ exports.modifyActiveTime = async ({ meetings_id, users_id }) => {
 // 메세지 전체 조회
 exports.getMessages = async ({ meetings_id, length }) => {
   const [lists] = await db.query(
-    "SELECT m.id, m.contents, m.created_at, m.users_id, m.meetings_id, m.users, u.nickname, m.admin FROM moimmoim.messages AS m left join users u on m.users_id = u.id where meetings_id = ? ORDER BY  m.id DESC limit 0,20;",
+    "SELECT m.id, m.contents, m.created_at, m.users_id, m.meetings_id, m.users, u.nickname, m.admin, m.reply_id FROM moimmoim.messages AS m left join users u on m.users_id = u.id where meetings_id = ? ORDER BY  m.id DESC limit 0,20;",
     [meetings_id]
   );
 
@@ -137,13 +146,15 @@ exports.getMoreMessage = async ({ meetings_id, length }) => {
 
 // 메세지 보내기
 exports.sendMessage = async (data) => {
-  const [rows] = await db.query("insert messages set meetings_id = ?, created_at = ?, contents = ?, users_id = ?, users = ?, admin = ?", [
+  const [rows] = await db.query("insert messages set meetings_id = ?, created_at = ?, contents = ?, users_id = ?, users = ?, admin = ?, reply_id = ?", [
     data.meetings_id,
     new Date(),
     data.contents,
     data.users_id,
     data.users,
     data.admin || 0,
+    data.reply_id || 0,
+    // 3019,
   ]);
 
   return rows;

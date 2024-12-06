@@ -89,3 +89,5 @@ server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Swagger docs available on http://localhost:${PORT}/api-docs`);
 });
+
+module.exports = { io };
