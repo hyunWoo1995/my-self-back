@@ -45,10 +45,9 @@ exports.generalMoimEnter = async ({ meetings_id, users_id }) => {
 
 // 모임 입장
 exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
-  const [{ count }] = await db.query("select count(id) as count from meetings_users where meetings_id = ?", [meetings_id]);
+  const [[{ count }]] = await db.query("select count(id) as count from meetings_users where meetings_id = ?", [meetings_id]);
 
-  const [{ max_members }] = await db.query("select max_members from meetings where id =?", [meetings_id]);
-  console.log("ccc", count, limit_count);
+  const [[{ max_members }]] = await db.query("select max_members from meetings where id =?", [meetings_id]);
 
   if (count === max_members) {
     return { CODE: "EM002" };

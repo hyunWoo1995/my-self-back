@@ -224,6 +224,7 @@ exports.handleJoinRegion = async ({ socket, pubClient, getAsync, setExAsync }, {
 
 // 모임 생성
 exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExAsync }, data) => {
+  console.log("user", data.users_id);
   if (data.name.length < 5 || data.name.length > 40 || data.description.length < 20 || data.description.length > 500) {
     io.to(socket.id).emit("error", {
       message: "모임 제목 또는 모임 설명이 조건에 맞지 않습니다.",
@@ -242,6 +243,7 @@ exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExA
     category1: data.category1,
     category2: data.category2,
   });
+  console.log("generateMeeting res", res);
 
   // 생성 성공
   if (res.affectedRows > 0) {
@@ -465,6 +467,27 @@ exports.getUsersInRoom = (io, roomId) => {
     const socket = io.sockets.sockets.get(socketId);
     return socket?.data.userId || null;
   });
+};
+
+exports.getUserList = async ({ socket, pubClient, getAsync, setExAsync }, { meetings_id, region_code }) => {
+  const meetingRoom = `${region_code}:${meetings_id}`;
+
+  const meetingsUsersCache = await getAsync(`meetingsUsers:${meetingRoom}`);
+
+  const meetingsUsers = meetingsUsersCache ? JSON.parse(meetingsUsersCache) : await moimModel.getMeetingsUsers({ meetings_id });
+
+  if (!meetingsUsersCache) {
+    await setExAsync(`meetingsUsers:${meetingRoom}`, 3600, JSON.stringify(meetingsUsers));
+  }
+
+  await pubClient.publish(
+    "meetingRoom",
+    JSON.stringify({
+      room: meetingRoom,
+      event: "userList",
+      data: meetingsUsers,
+    })
+  );
 };
 
 const handleDecryptMessages = (data) => {

@@ -21,15 +21,20 @@ module.exports = async (io) => {
     socket.emit("message", socket.id);
     socket.on("userData", (data) => socketService.getMyList({ socket, pubClient, getAsync, setExAsync }, data));
 
-    // 지역 입장 (Join region)
+    // 지역 입장
     socket.on("join", ({ user, region_code }) => socketService.handleJoinRegion({ socket, pubClient, getAsync, setExAsync }, { user, region_code }));
 
-    // 모임 생성 (Generate a meeting)
-    socket.on("generateMeeting", (data) => socketService.handleGenerateMeeting({ socket, pubClient, getAsync, setExAsync }, data));
+    // 모임 생성
+    socket.on("generateMeeting", (data) => socketService.handleGenerateMeeting({ socket, io, pubClient, getAsync, setExAsync }, data));
 
-    // 모임 입장 (Enter a meeting)
+    // 모임 입장
     socket.on("enterMeeting", (data) => {
       socketService.handleEnterMeeting({ socket, pubClient, getAsync, setExAsync, io }, data);
+    });
+
+    // 모임 유저 목록
+    socket.on("getUserList", ({ meetings_id, region_code }) => {
+      socketService.getUserList({ socket, pubClient, getAsync, setExAsync }, { meetings_id, region_code });
     });
 
     // room에서 나가기
