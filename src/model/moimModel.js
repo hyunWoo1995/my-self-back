@@ -15,7 +15,7 @@ exports.generateMeeting = async ({ name, region_code, maxMembers, users_id, desc
 // 모임 조회
 exports.getMeetingList = async ({ region_code }) => {
   const [rows] = await db.query(
-    "select m.*, c.name as category1_name, c2.name as category2_name , COUNT(u.id) AS userCount, lh.status as like from meetings m left join meetings_users u on m.id = u.meetings_id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id left join like_history lh on lh.receiver_id = m.id where m.region_code = ? group by m.id, lh.status order by m.created_at desc",
+    "select m.*, c.name as category1_name, c2.name as category2_name , COUNT(u.id) AS userCount, (select count(id) from like_history where receiver_id = m.id) as likeCount from meetings m left join meetings_users u on m.id = u.meetings_id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id where m.region_code = ? group by m.id order by m.created_at desc",
     [region_code]
   );
 
@@ -152,7 +152,7 @@ exports.sendMessage = async (data) => {
 // 미팅 데이터 조회
 exports.getMeetingData = async (data) => {
   const [rows] = await db.query(
-    "SELECT m.*, u.nickname AS creator_name, c.name AS category1_name, c2.name AS category2_name, lh.status as like, COUNT(mu.id) AS userCount FROM meetings m JOIN users u ON m.creator_id = u.id JOIN category c ON m.category1 = c.id JOIN category c2 ON m.category2 = c2.id mu.status = 1 LEFT JOIN like_history lh ON lh.receiver_id = m.id WHERE m.id = ? GROUP BY m.id, lh.status;",
+    "SELECT m.*, u.nickname AS creator_name, c.name AS category1_name, c2.name AS category2_name, COUNT(mu.id) AS userCount, (select count(id) from like_history where receiver_id = ?) as likeCount FROM meetings m JOIN users u ON m.creator_id = u.id JOIN category c ON m.category1 = c.id JOIN category c2 ON m.category2 = c2.id LEFT JOIN meetings_users mu ON mu.meetings_id = m.id AND mu.status = 1 WHERE m.id = ? GROUP BY m.id;",
     [data.meetings_id]
   );
 
