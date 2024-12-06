@@ -261,10 +261,9 @@ const authController = {
         // 지역코드 (RC0001~999) 있는지 없는지 체크후 있으면 등록 없으면 +1해서 등록.
         addresses.map(async (item) => {
           // let rcCode = "RC001"; // 기본값
-          let rcCode = await userModel.findByUserAddresses(
-            userId,
-            item.address
-          );
+          let rcCode = await userModel.findByUserAddresses({
+            address: item.address,
+          });
           console.log("rcCode111", rcCode);
           if (!rcCode) {
             // 가장 높은 address_code 가져오기
@@ -391,7 +390,9 @@ const authController = {
       } else {
         const accessToken = jwt.sign(user);
         const refreshToken = jwt.refresh(user);
-        res.redirect(`${process.env.FRONTEND_URL}?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+        res.redirect(
+          `${process.env.FRONTEND_URL}?accessToken=${accessToken}&refreshToken=${refreshToken}`
+        );
       }
     } catch (error) {
       console.log("error", error);

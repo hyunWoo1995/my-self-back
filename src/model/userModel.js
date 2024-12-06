@@ -43,7 +43,7 @@ const User = {
     const user_id = params.user_id;
     const address = params.address;
     const address_code = params.address_code;
-    console.log('params', params)
+    console.log("params", params);
     const [result] = await db.query(
       `INSERT INTO user_addresses (user_id, address, address_code) 
       VALUES (?, ?, ?)`,
@@ -87,11 +87,23 @@ const User = {
   },
 
   // 회원 주소정보 가져오기
-  async findByUserAddresses(user_id, address) {
-    const [rows] = await db.query(
-      "SELECT address, address_code FROM user_addresses WHERE user_id = ? AND address = ?",
-      [user_id, address]
-    );
+  async findByUserAddresses(params) {
+    const user_id = params.user_id || null;
+    const address = params.address || null;
+
+    let query = "SELECT address, address_code FROM user_addresses WHERE 1";
+    const queryParams = [];
+
+    if (user_id !== null) {
+      query += " AND user_id = ?";
+      queryParams.push(user_id);
+    }
+    if (address !== null) {
+      query += " AND address = ?";
+      queryParams.push(address);
+    }
+
+    const [rows] = await db.query(query, queryParams);
     return rows[0]?.address_code || null;
   },
   // 가장 높은 address_code 가져오기
@@ -100,7 +112,7 @@ const User = {
       "SELECT MAX(address_code) AS max_code FROM user_addresses"
     );
     return rows[0]?.max_code || null;
-  }
+  },
 };
 
 module.exports = User;
