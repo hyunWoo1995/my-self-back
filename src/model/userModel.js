@@ -10,12 +10,11 @@ const User = {
     const birthdate = params.birthdate || null;
     const gender = params.gender || null;
     const provider = params.provider || null;
-    const provider_id = params.provider_id || null;
     const profileImageName = params.profileImageName || null;
     const ip = params.ip || null;
     const [result] = await db.query(
-      `INSERT INTO users (email, password, nickname, birthdate, gender, provider, provider_id, profile_image_name, ip) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (email, password, nickname, birthdate, gender, provider, profile_image_name, ip) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         email,
         password,
@@ -23,7 +22,6 @@ const User = {
         birthdate,
         gender,
         provider,
-        provider_id,
         profileImageName,
         ip,
       ]
@@ -45,7 +43,7 @@ const User = {
     const user_id = params.user_id;
     const address = params.address;
     const address_code = params.address_code;
-
+    console.log('params', params)
     const [result] = await db.query(
       `INSERT INTO user_addresses (user_id, address, address_code) 
       VALUES (?, ?, ?)`,
@@ -81,6 +79,28 @@ const User = {
     const [rows] = await db.query("SELECT * FROM users WHERE id = ?", [id]);
     return rows[0];
   },
+
+  // 이메일 가져오기
+  async findByUserEmail(id) {
+    const [rows] = await db.query("SELECT email FROM users WHERE id = ?", [id]);
+    return rows[0].email;
+  },
+
+  // 회원 주소정보 가져오기
+  async findByUserAddresses(user_id, address) {
+    const [rows] = await db.query(
+      "SELECT address, address_code FROM user_addresses WHERE user_id = ? AND address = ?",
+      [user_id, address]
+    );
+    return rows[0]?.address_code || null;
+  },
+  // 가장 높은 address_code 가져오기
+  async getHighestAddressCode() {
+    const [rows] = await db.query(
+      "SELECT MAX(address_code) AS max_code FROM user_addresses"
+    );
+    return rows[0]?.max_code || null;
+  }
 };
 
 module.exports = User;

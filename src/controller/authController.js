@@ -107,6 +107,16 @@ function validateBirthdate(birthdate) {
   return true;
 }
 
+const getResidentNumberFirstDigit = (birthyear, gender) => {
+  const birthCentury = parseInt(birthyear, 10) >= 2000 ? 2000 : 1900;
+
+  if (birthCentury === 1900) {
+    return gender === "male" ? "1" : "2";
+  } else if (birthCentury === 2000) {
+    return gender === "male" ? "3" : "4";
+  }
+};
+
 const authController = {
   // 1. refreshToken 검증
   async refreshToken(req, res) {
@@ -189,6 +199,7 @@ const authController = {
         passwordCheck,
         nickname,
         birthdate,
+        provider,
         interests,
         addresses,
       } = req.body;
@@ -238,6 +249,7 @@ const authController = {
         nickname,
         birthdate,
         gender,
+        provider,
         ip,
       });
       const resultInterest = await Promise.all(
@@ -246,13 +258,31 @@ const authController = {
         )
       );
       const resultAddress = await Promise.all(
-        addresses.map((item) =>
-          userModel.createUserAddresses({
+        // 지역코드 (RC0001~999) 있는지 없는지 체크후 있으면 등록 없으면 +1해서 등록.
+        addresses.map(async (item) => {
+          // let rcCode = "RC001"; // 기본값
+          let rcCode = await userModel.findByUserAddresses(
+            userId,
+            item.address
+          );
+          console.log("rcCode111", rcCode);
+          if (!rcCode) {
+            // 가장 높은 address_code 가져오기
+            const highestCode = await userModel.getHighestAddressCode();
+            const newCodeNumber = highestCode
+              ? parseInt(highestCode.replace("RC", ""), 10) + 1
+              : 1; // 기본값 1
+            console.log("highestCode", highestCode);
+            console.log("newCodeNumber", newCodeNumber);
+            rcCode = `RC${String(newCodeNumber).padStart(3, "0")}`; // "RC001" 형식 유지
+          }
+          console.log("rcCode22", rcCode);
+          return userModel.createUserAddresses({
             user_id: userId,
             address: item.address,
-            address_code: item.address_code,
-          })
-        )
+            address_code: rcCode,
+          });
+        })
       );
 
       res.sendSuccess("회원가입 완료", { userId });
@@ -349,16 +379,19 @@ const authController = {
       let user = await userModel.findByEmail(email, provider);
       const birthdate = `${userData.birthyear.slice(2)}${userData.birthday}`;
       const nickname = userData.name;
-
+      const gender = getResidentNumberFirstDigit(
+        userData.birthyear,
+        userData.gender
+      );
       // 3. 기존 사용자가 없으면 회원가입 처리
       if (!user) {
         res.redirect(
-          `${process.env.FRONTEND_URL}/sign?email=${email}&birthdate=${birthdate}&nickname=${nickname}`
+          `${process.env.FRONTEND_URL}/sign?email=${email}&birthdate=${birthdate}&nickname=${nickname}&provider=${provider}&gender=${gender}`
         );
       } else {
-        // const accessToken = jwt.sign(user);
-        // const refreshToken = jwt.refresh(user);
-        res.redirect(`${process.env.FRONTEND_URL}`);
+        const accessToken = jwt.sign(user);
+        const refreshToken = jwt.refresh(user);
+        res.redirect(`${process.env.FRONTEND_URL}?accessToken=${accessToken}&refreshToken=${refreshToken}`);
       }
     } catch (error) {
       console.log("error", error);
