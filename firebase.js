@@ -39,7 +39,7 @@ const oneSendMessage = ({ title = "moimmoim", subtitle, body, token }) => {
 
 const topicSendMeesage = ({ title = "moimmoim", subtitle, body, topic, sender_id }) => {
   console.log("topictopictopic", topic);
-  const condition = `'room_${topic}' in topics && 'sender_${sender_id}' not in topics`;
+  const condition = `\'room_${topic}\' in topics && \'sender_${sender_id}\' not in topics`;
 
   console.log("condition", condition);
 
@@ -72,42 +72,42 @@ const topicSendMeesage = ({ title = "moimmoim", subtitle, body, topic, sender_id
     });
 };
 
-const sendMessage = async ({ title, subtitle, body, fcmTokens, senderId }) => {
-  // senderId에 해당하는 FCM 토큰 제거
-  const tokensToSend = fcmTokens.filter((token) => token.userId !== senderId);
+// const sendMessage = async ({ title, subtitle, body, fcmTokens, senderId }) => {
+//   // senderId에 해당하는 FCM 토큰 제거
+//   const tokensToSend = fcmTokens.filter((token) => token.userId !== senderId);
 
-  // 메시지 생성
-  const message = {
-    notification: {
-      title: title,
-      body: body,
-    },
-    apns: {
-      payload: {
-        aps: {
-          alert: {
-            subtitle: subtitle,
-          },
-        },
-      },
-    },
-    android: {
-      notification: {
-        sound: "default", // 무음 해제
-      },
-    },
-  };
+//   // 메시지 생성
+//   const message = {
+//     notification: {
+//       title: title,
+//       body: body,
+//     },
+//     apns: {
+//       payload: {
+//         aps: {
+//           alert: {
+//             subtitle: subtitle,
+//           },
+//         },
+//       },
+//     },
+//     android: {
+//       notification: {
+//         sound: "default", // 무음 해제
+//       },
+//     },
+//   };
 
-  // 각 토큰으로 메시지 전송
-  for (const token of tokensToSend) {
-    try {
-      await admin.messaging().sendToDevice(token.fcmToken, message);
-      console.log(`Message sent to token: ${token.fcmToken}`);
-    } catch (error) {
-      console.error(`Error sending to token: ${token.fcmToken}`, error);
-    }
-  }
-};
+//   // 각 토큰으로 메시지 전송
+//   for (const token of tokensToSend) {
+//     try {
+//       await admin.messaging().sendToDevice(token.fcmToken, message);
+//       console.log(`Message sent to token: ${token.fcmToken}`);
+//     } catch (error) {
+//       console.error(`Error sending to token: ${token.fcmToken}`, error);
+//     }
+//   }
+// };
 
 const handleSubscribeTopic = ({ topic, token }) => {
   console.log("handleUnSubscribeTopic", topic, token);
