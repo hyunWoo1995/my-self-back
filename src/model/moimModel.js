@@ -145,7 +145,7 @@ exports.getMoreMessage = async ({ meetings_id, length }) => {
 
 // 메세지 보내기
 exports.sendMessage = async (data) => {
-  const [rows] = await db.query("insert messages set meetings_id = ?, created_at = ?, contents = ?, users_id = ?, users = ?, admin = ?, reply_id = ?", [
+  const [rows] = await db.query("insert messages set meetings_id = ?, created_at = ?, contents = ?, users_id = ?, users = ?, admin = ?, reply_id = ?, tag_id = ?", [
     data.meetings_id,
     new Date(),
     data.contents,
@@ -153,7 +153,7 @@ exports.sendMessage = async (data) => {
     data.users,
     data.admin || 0,
     data.reply_id || 0,
-    // 3019,
+    data.tag_id || 0,
   ]);
 
   return rows;
@@ -193,9 +193,14 @@ exports.lastRead = async ({ meetings_id, users_id }) => {
 
 // 모임-유저 조회
 exports.getMeetingsUsers = async ({ meetings_id }) => {
-  const [rows] = await db.query("select * from meetings_users where meetings_id = ?", meetings_id);
+  const [rows] = await db.query("select mu.*, u.nickname from meetings_users mu join users u on mu.users_id = u.id  where meetings_id = ?", [meetings_id]);
 
   return rows;
+};
+
+// 모임-유저 이름 조회
+exports.getMeetingUsersName = async ({ meetings_id, region_code }) => {
+  const [rows] = await db.query("select u.id, u.name from meetings_users mu join users u on mu.users_id = u.id where mu.meetings_id = ?", [meetings_id]);
 };
 
 // 모임 좋아요

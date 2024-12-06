@@ -361,7 +361,7 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
 };
 
 // 메세지 보내기
-exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, contents, users_id, reply_id }) => {
+exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, contents, users_id, reply_id, tag_id }) => {
   const meetingRoom = `${region_code}:${meetings_id}`;
 
   const meetingsUsers = await getAsync(`meetingsUsers:${meetingRoom}`);
@@ -375,6 +375,7 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
     users: JSON.parse(meetingsUsers)
       .map((v) => v.users_id)
       .join(","),
+    tag_id,
   });
 
   // 전송 성공
