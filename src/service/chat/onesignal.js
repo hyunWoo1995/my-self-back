@@ -10,84 +10,76 @@ const { getMeetingItem } = require("../../model/moimModel");
 
 exports.handleOnesignalTags = async ({ email, meetings_id, users_id }) => {
   try {
+    const res = await axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/external_id/${email}`, {
+      headers: {
+        Authorization: process.env.ONESIGNAL_API_KEY,
+      },
+    });
+    const { tags } = res.data.properties;
 
-  const res = await axios.get(`https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/external_id/${email}`, {
-    headers: {
-      Authorization: process.env.ONESIGNAL_API_KEY,
-    },
-  });
-  const { tags } = res.data.properties;
+    if (tags) {
+      // const meetings_ids = [...tags.meetings_id.split(","), meetings_id].map((v) => String(v)).filter((v, i, arr) => arr.indexOf(v) === i);
 
-
-  if (tags) {
-    // const meetings_ids = [...tags.meetings_id.split(","), meetings_id].map((v) => String(v)).filter((v, i, arr) => arr.indexOf(v) === i);
-
-    axios.patch(
-      `https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/external_id/${email}`,
-      {
-        properties: {
-          tags: {
-            ...tags,
-            [meetings_id]: true,
-            user_id: users_id,
+      axios.patch(
+        `https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/external_id/${email}`,
+        {
+          properties: {
+            tags: {
+              ...tags,
+              [meetings_id]: true,
+              user_id: users_id,
+            },
           },
         },
-      },
-      {
-        headers: {
-          Authorization: process.env.ONESIGNAL_API_KEY,
-        },
-      }
-    );
-  } else {
-    axios.patch(
-      `https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/external_id/${email}`,
-      {
-        properties: {
-          tags: {
-            [meetings_id]: true,
-            user_id: users_id,
+        {
+          headers: {
+            Authorization: process.env.ONESIGNAL_API_KEY,
+          },
+        }
+      );
+    } else {
+      axios.patch(
+        `https://api.onesignal.com/apps/${process.env.ONESIGNAL_APP_ID}/users/by/external_id/${email}`,
+        {
+          properties: {
+            tags: {
+              [meetings_id]: true,
+              user_id: users_id,
+            },
           },
         },
-      },
-      {
-        headers: {
-          Authorization: process.env.ONESIGNAL_API_KEY,
-        },
-      }
-    );
+        {
+          headers: {
+            Authorization: process.env.ONESIGNAL_API_KEY,
+          },
+        }
+      );
+    }
+  } catch (err) {
+    console.error("handleOnesignalTags", err);
   }
-
-} catch (err) {
-  console.error('handleOnesignalTags',err)
-}
-
-
-
 };
 
 exports.handleOnesignalNotification = async ({ meetings_id, users_id, contents }) => {
   try {
+    const meetingData = await getMeetingItem({ meetings_id });
+    console.log("meetingData", meetingData);
 
-  const meetingData = await getMeetingItem({ meetings_id });
-  console.log("meetingData", meetingData);
-
-  axios.post(
-    "https://api.onesignal.com/notifications",
-    {
-      ...messageTemplate,
-      contents: { en: contents || "", ko: contents || "" },
-      subtitle: { en: meetingData.name, ko: meetingData.name },
-      filters: [{ field: "tag", key: meetings_id, relation: "=", value: true }, { operator: "AND" }, { field: "tag", key: "user_id", relation: "!=", value: users_id }],
-    },
-    {
-      headers: {
-        authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+    axios.post(
+      "https://api.onesignal.com/notifications",
+      {
+        ...messageTemplate,
+        contents: { en: contents || "", ko: contents || "" },
+        subtitle: { en: meetingData.name, ko: meetingData.name },
+        filters: [{ field: "tag", key: meetings_id, relation: "=", value: true }, { operator: "AND" }, { field: "tag", key: "user_id", relation: "!=", value: users_id }],
       },
-    }
-  );
-} catch (err) {
-  console.error('handleOnesignalNotification',err)
-}
-
+      {
+        headers: {
+          authorization: `Basic ${process.env.ONESIGNAL_API_KEY}`,
+        },
+      }
+    );
+  } catch (err) {
+    console.error("handleOnesignalNotification", err);
+  }
 };

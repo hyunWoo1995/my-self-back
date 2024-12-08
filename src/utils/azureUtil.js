@@ -1,11 +1,6 @@
 // 파일: azureUtil.js
 const { v4: uuidv4 } = require("uuid");
-const {
-  BlobServiceClient,
-  generateBlobSASQueryParameters,
-  BlobSASPermissions,
-  StorageSharedKeyCredential,
-} = require("@azure/storage-blob");
+const { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } = require("@azure/storage-blob");
 
 require("dotenv").config();
 
@@ -13,14 +8,10 @@ require("dotenv").config();
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME; // .env에서 계정 이름 가져오기
 const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY; // .env에서 계정 키 가져오기
-const blobServiceClient =
-  BlobServiceClient.fromConnectionString(connectionString);
+const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
 
 // SAS URL 생성 시 필요한 Shared Key Credential
-const sharedKeyCredential = new StorageSharedKeyCredential(
-  accountName,
-  accountKey
-);
+const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
 
 /**
  * 파일 업로드
@@ -57,10 +48,10 @@ async function uploadFile(containerName, fileBuffer, originalName) {
  */
 function downloadSasUrl(containerName, blobName, expiryHours = 1) {
   try {
-    console.log('111')
+    console.log("111");
     const expiresOn = new Date();
     expiresOn.setHours(expiresOn.getHours() + expiryHours); // 만료 시간 설정
-    console.log('222')
+    console.log("222");
     const sasToken = generateBlobSASQueryParameters(
       {
         containerName,
@@ -68,14 +59,12 @@ function downloadSasUrl(containerName, blobName, expiryHours = 1) {
         permissions: BlobSASPermissions.parse("r"), // 읽기 권한
         expiresOn,
       },
-      sharedKeyCredential
+      sharedKeyCredentialㅡ
     ).toString();
-    console.log('sasToken', sasToken)
+    console.log("sasToken", sasToken);
 
-    const blobClient = blobServiceClient
-      .getContainerClient(containerName)
-      .getBlobClient(blobName);
-    console.log('blobClient', blobClient)
+    const blobClient = blobServiceClient.getContainerClient(containerName).getBlobClient(blobName);
+    console.log("blobClient", blobClient);
     const sasUrl = `${blobClient.url}?${sasToken}`;
     console.log(`Generated SAS URL: ${sasUrl}`);
     return sasUrl;

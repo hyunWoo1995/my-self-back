@@ -6,6 +6,7 @@ const { io } = require("../../index");
 exports.getCategories = async (req, res) => {
   try {
     const result = await moimModel.getCategories();
+    console.log("rrr", result);
 
     return res.sendSuccess("요청 성공", { category1: result.filter((v) => !v.parent_id), category2: result.filter((v) => v.parent_id) });
   } catch (err) {
