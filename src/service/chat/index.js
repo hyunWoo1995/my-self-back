@@ -14,6 +14,7 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
   try {
     const meetingRoom = `${region_code}:${meetings_id}`;
     socket.join(meetingRoom);
+    socket.join(`${meetingRoom}:active`);
     socket.data.userId = users_id;
 
     // 현재 room에 접속한 사용자 목록 요청
@@ -421,7 +422,7 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
     const meetingData = await moimModel.getMeetingItem({ meetings_id });
     fcm.topicSendMeesage({ subtitle: meetingData.name, body: contents, topic: meetings_id, sender_id: users_id });
 
-    const usersInRoom = this.getUsersInRoom(io, meetingRoom);
+    const usersInRoom = this.getUsersInRoom(io, `${meetingRoom}:active`);
 
     if (usersInRoom) {
       await moimModel.modifyActiveTime({ meetings_id, users_id: usersInRoom });

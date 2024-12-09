@@ -41,8 +41,12 @@ module.exports = async (io) => {
     socket.on("exitMoim", ({ region_code, meetings_id }) => {
       const meetingRoom = `${region_code}:${meetings_id}`;
       socket.leave(meetingRoom);
-      const usersInRoom = socketService.getUsersInRoom(io, meetingRoom);
-      console.log("exitMoim", usersInRoom);
+      socket.leave(`${meetingRoom}:active`);
+    });
+
+    socket.on("blurMoim", ({ region_code, meetings_id }) => {
+      const meetingRoom = `${region_code}:${meetings_id}`;
+      socket.leave(`${meetingRoom}:active`);
     });
 
     // 모임 입장 신청
