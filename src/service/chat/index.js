@@ -422,7 +422,7 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
     const meetingListcache = await getAsync(`meetingList:${region_code}`);
 
     let meetingList = meetingListcache ? JSON.parse(meetingListcache) : await moimModel.getMeetingList({ region_code });
-    handleActiveTimeMeeting({ pubClient, getAsync, meetingList, region_code, setExAsync, meetings_id });
+    await handleActiveTimeMeeting({ pubClient, getAsync, meetingList, region_code, setExAsync, meetings_id });
 
     const messages = await moimModel.getMessages({ meetings_id: meetings_id });
 
@@ -501,6 +501,8 @@ const handleDecryptMessages = (data) => {
 };
 
 const handleActiveTimeMeeting = async ({ pubClient, getAsync, setExAsync, meetingList, region_code, meetings_id }) => {
+  console.log("handleActiveTimeMeeting", region_code, meetings_id);
+
   let addActiveTimeList;
 
   if (meetings_id) {
