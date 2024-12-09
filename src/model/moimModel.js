@@ -15,7 +15,7 @@ exports.generateMeeting = async ({ name, region_code, maxMembers, users_id, desc
 // 모임 조회
 exports.getMeetingList = async ({ region_code }) => {
   const [rows] = await db.query(
-    "select m.*, c.name as category1_name, c2.name as category2_name , COUNT(u.id) AS userCount, (select count(id) from like_history where receiver_id = m.id) as likeCount from meetings m left join meetings_users u on m.id = u.meetings_id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id where m.region_code = ? group by m.id order by m.created_at desc",
+    "select m.*, c.name as category1_name, c2.name as category2_name , COUNT(u.id) AS userCount, (select count(id) from like_history where receiver_id = m.id and status = 'active') as likeCount from meetings m left join meetings_users u on m.id = u.meetings_id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id where m.region_code = ? group by m.id order by m.created_at desc",
     [region_code]
   );
 
@@ -223,5 +223,17 @@ exports.handleLikeMeeting = async ({ users_id, meetings_id }) => {
     const [rows] = await db.query("insert into like_history (type, sender_id, receiver_id, status, created_at) values (?,?,?,?,?)", ["meeting", users_id, meetings_id, "active", new Date()]);
 
     return rows;
+  }
+};
+
+// 모임 나가기
+exports.handleLeaveMeeting = async ({ users_id, meetings_id }) => {
+  const [existingData] = await db.query("select * from meetings_users where users_id = ? and meetings_id = ?", [users_id, meetings_id]);
+
+  if (existingData.length > 0) {
+    const [rows] = await db.query("update meetings_users set status = ?, updated_at = ?", [-1, new Date()]);
+    return rows;
+  } else {
+    return;
   }
 };

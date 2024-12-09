@@ -58,6 +58,8 @@ module.exports = async (io) => {
 
     socket.on("typing", ({ region_code, meetings_id, users_id }) => socketService.handleChatTyping({ pubClient, getAsync, setExAsync }, { region_code, meetings_id, users_id }));
 
+    socket.on("likeMoim", ({ users_id, meetings_id, region_code }) => socketService.handleLikeMoim({ socket, getAsync, setExAsync, pubClient }, { users_id, meetings_id, region_code }));
+
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)
     socket.on("disconnect", () => {});
   });

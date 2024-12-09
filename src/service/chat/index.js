@@ -213,7 +213,7 @@ exports.handleJoinRegion = async ({ socket, pubClient, getAsync, setExAsync }, {
 
     // console.log("addActiveTimeList", addActiveTimeList);
     // await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(addActiveTimeList));
-    handleActiveTimeMeeting({ meetingList, getAsync, pubClient, setExAsync, region_code });
+    await handleActiveTimeMeeting({ meetingList, getAsync, pubClient, setExAsync, region_code });
   } else {
     await pubClient.publish(
       "region_code",
@@ -465,6 +465,7 @@ exports.handleChatTyping = async ({ socket, pubClient, getAsync, setExasync }, {
   }, 1000);
 };
 
+// 모임 접속 유저 확인
 exports.getUsersInRoom = (io, roomId) => {
   const clients = io.sockets.adapter.rooms.get(roomId) || new Set();
 
@@ -474,6 +475,7 @@ exports.getUsersInRoom = (io, roomId) => {
   });
 };
 
+// 모임 유저 확인
 exports.getUserList = async ({ socket, pubClient, getAsync, setExAsync }, { meetings_id, region_code }) => {
   const meetingRoom = `${region_code}:${meetings_id}`;
 
@@ -493,6 +495,31 @@ exports.getUserList = async ({ socket, pubClient, getAsync, setExAsync }, { meet
       data: meetingsUsers,
     })
   );
+};
+
+// 좋아요
+exports.handleLikeMoim = async ({ socket, pubClient, getAsync, setExAsync }, { users_id, meetings_id, region_code }) => {
+  const result = await moimModel.handleLikeMeeting({ users_id, meetings_id });
+
+  console.log("rrr", result);
+
+  if (result.affectedRows > 0) {
+    // const meetingListcache = await getAsync(`meetingList:${region_code}`);
+
+    // let meetingList = meetingListcache ? JSON.parse(meetingListcache) : await moimModel.getMeetingList({ region_code });
+    let meetingList = await moimModel.getMeetingList({ region_code });
+
+    await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(meetingList));
+
+    await pubClient.publish(
+      "region_code",
+      JSON.stringify({
+        room: region_code,
+        event: "list",
+        data: meetingList,
+      })
+    );
+  }
 };
 
 const handleDecryptMessages = (data) => {

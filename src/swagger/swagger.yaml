@@ -165,26 +165,6 @@ paths:
                 length:
                   type: int
                   example: 20
-  /moim/likeMoim:
-    post:
-      tags:
-        - moim
-      summary: 모임 좋아요
-      description: 모임 좋아요
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                meetings_id:
-                  type: int
-                  example: 1
-                users_id:
-                  type: int
-                  example: 2
-
 #스키마 설정
 components:
   securitySchemes:

@@ -5,6 +5,5 @@ const router = express.Router();
 // 카테고리 조회
 router.get("/category", moimController.getCategories);
 router.post("/getMoreMessage", moimController.getMoreMessage);
-router.post("/likeMoim", moimController.handleLikeMeeting);
 
 module.exports = router;
