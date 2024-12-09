@@ -522,6 +522,7 @@ const handleActiveTimeMeeting = async ({ pubClient, getAsync, setExAsync, meetin
     addActiveTimeList = await Promise.all(
       meetingList.map(async (v) => {
         const { id } = v;
+        console.log("id", id);
         const meetingsUserData = await getAsync(`meetingsUsers:${region_code}:${id}`);
 
         const max_active_time_item = JSON.parse(meetingsUserData)

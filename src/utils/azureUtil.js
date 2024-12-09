@@ -59,7 +59,7 @@ function downloadSasUrl(containerName, blobName, expiryHours = 1) {
         permissions: BlobSASPermissions.parse("r"), // 읽기 권한
         expiresOn,
       },
-      sharedKeyCredentialㅡ
+      sharedKeyCredential
     ).toString();
     console.log("sasToken", sasToken);
 
