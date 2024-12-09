@@ -165,6 +165,21 @@ paths:
                 length:
                   type: int
                   example: 20
+
+  /address/search:
+    get:
+      tags:
+        - address
+      summary: 주소 검색
+      description: Retrieve a list of addresses that match the given keyword.
+      parameters:
+        - name: keyword
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "Main Street"
+          description: The keyword to search for in addresses.
 #스키마 설정
 components:
   securitySchemes:

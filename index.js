@@ -12,6 +12,7 @@ const authJWT = require("./src/middlewares/authJwt");
 const authRouter = require("./src/routes/auth");
 const userRouter = require("./src/routes/user");
 const moimRouter = require("./src/routes/moim");
+const addressRouter = require("./src/routes/address");
 const configRouter = require("./src/routes/config");
 
 const socketIo = require("socket.io");
@@ -57,7 +58,7 @@ app.use(
 app.use((req, res, next) => {
   // 제외할 경로 리스트
   const excludedPaths = [];
-  const excludedPrefixes = ["/auth", "/moim"]; // auth로 시작하는 경로 전체
+  const excludedPrefixes = ["/auth", "/moim", "/address"]; // auth로 시작하는 경로 전체
   console.log("req.path", req.path);
 
   const isExcludedPath = excludedPaths.includes(req.path);
@@ -77,6 +78,7 @@ app.use(express.json());
 app.use("/auth", authRouter);
 app.use("/config", configRouter);
 
+app.use("/address", addressRouter);
 // 사용자 라우터 등록
 app.use("/user", userRouter);
 app.use("/moim", moimRouter);
