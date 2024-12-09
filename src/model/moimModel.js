@@ -3,7 +3,7 @@ const { encryptMessage } = require("../utils/aes");
 const { isAfterDate } = require("../utils/date");
 
 // 모임 생성
-exports.generateMeeting = async ({ name, region_code, maxMembers, users_id, description, type, category1, category2 }) => {
+exports.generateMeeting = async ({ name, region_code, maxMembers, users_id, description, type, category1, category2, date }) => {
   const [rows] = await db.query(
     "insert meetings set name = ?, region_code = ?, created_at = ?, max_members = ?, event_date = ?, creator_id = ?, description = ?, type = ?, category1= ?, category2 = ?",
     [name, region_code, new Date(), maxMembers, new Date(date), users_id, description, type, category1, category2]
