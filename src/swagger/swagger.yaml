@@ -171,15 +171,14 @@ paths:
       tags:
         - address
       summary: 주소 검색
-      description: Retrieve a list of addresses that match the given keyword.
+      description: 키워드와 일치하는 주소 검색
       parameters:
         - name: keyword
           in: query
           required: true
           schema:
             type: string
-            example: "Main Street"
-          description: The keyword to search for in addresses.
+            example: "태평동"
 #스키마 설정
 components:
   securitySchemes:
