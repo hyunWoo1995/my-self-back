@@ -165,7 +165,7 @@ exports.sendMessage = async (data) => {
 // 미팅 데이터 조회
 exports.getMeetingData = async (data) => {
   const [rows] = await db.query(
-    "SELECT m.*, u.nickname AS creator_name, c.name AS category1_name, c2.name AS category2_name, COUNT(mu.id) AS userCount, (select count(id) from like_history where receiver_id = ?) as likeCount FROM meetings m JOIN users u ON m.creator_id = u.id JOIN category c ON m.category1 = c.id JOIN category c2 ON m.category2 = c2.id LEFT JOIN meetings_users mu ON mu.meetings_id = m.id AND mu.status = 1 WHERE m.id = ? GROUP BY m.id;",
+    "SELECT m.*, u.nickname AS creator_name, c.name AS category1_name, c2.name AS category2_name, COUNT(mu.id) AS userCount, (select count(id) from like_history where receiver_id = ? and status = 'active') as likeCount FROM meetings m JOIN users u ON m.creator_id = u.id JOIN category c ON m.category1 = c.id JOIN category c2 ON m.category2 = c2.id LEFT JOIN meetings_users mu ON mu.meetings_id = m.id AND mu.status = 1 WHERE m.id = ? GROUP BY m.id;",
     [data.meetings_id, data.meetings_id]
   );
 

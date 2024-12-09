@@ -500,6 +500,7 @@ exports.getUserList = async ({ socket, pubClient, getAsync, setExAsync }, { meet
 // 좋아요
 exports.handleLikeMoim = async ({ socket, pubClient, getAsync, setExAsync }, { users_id, meetings_id, region_code }) => {
   const result = await moimModel.handleLikeMeeting({ users_id, meetings_id });
+  const meetingRoom = `${region_code}:${meetings_id}`;
 
   console.log("rrr", result);
 
@@ -511,7 +512,11 @@ exports.handleLikeMoim = async ({ socket, pubClient, getAsync, setExAsync }, { u
 
     await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(meetingList));
 
-    await pubClient.publish(
+    const meetingData = await moimModel.getMeetingData({ meetings_id });
+
+    await setExAsync(`meetingData:${region_code}:${meetings_id}`, 3600 * 24 * 15, JSON.stringify(meetingData));
+
+    pubClient.publish(
       "region_code",
       JSON.stringify({
         room: region_code,
@@ -519,7 +524,21 @@ exports.handleLikeMoim = async ({ socket, pubClient, getAsync, setExAsync }, { u
         data: meetingList,
       })
     );
+    await pubClient.publish(
+      "meetingRoom",
+      JSON.stringify({
+        room: meetingRoom,
+        event: "meetingData",
+        data: meetingData,
+      })
+    );
   }
+};
+
+// 모임 나가기
+exports.handleLeaveMoim = async ({ socket, pubClient, getAsync, setExAsync }, { users_id, meetings_id }) => {
+  // meetings_users 테이블 상태 변경
+  await moimModel.handleLeaveMeeting({ users_id, meetings_id });
 };
 
 const handleDecryptMessages = (data) => {
