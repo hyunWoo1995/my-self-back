@@ -6,7 +6,7 @@ const { isAfterDate } = require("../utils/date");
 exports.generateMeeting = async ({ name, region_code, maxMembers, users_id, description, type, category1, category2 }) => {
   const [rows] = await db.query(
     "insert meetings set name = ?, region_code = ?, created_at = ?, max_members = ?, event_date = ?, creator_id = ?, description = ?, type = ?, category1= ?, category2 = ?",
-    [name, region_code, new Date(), maxMembers, new Date(2024, 12, 25), users_id, description, type, category1, category2]
+    [name, region_code, new Date(), maxMembers, new Date(date), users_id, description, type, category1, category2]
   );
 
   return rows;
@@ -15,7 +15,7 @@ exports.generateMeeting = async ({ name, region_code, maxMembers, users_id, desc
 // 모임 조회
 exports.getMeetingList = async ({ region_code }) => {
   const [rows] = await db.query(
-    "select m.*, c.name as category1_name, c2.name as category2_name , COUNT(u.id) AS userCount, (select count(id) from like_history where receiver_id = m.id and status = 'active') as likeCount from meetings m left join meetings_users u on m.id = u.meetings_id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id where m.region_code = ? group by m.id order by m.created_at desc",
+    "select m.*, c.name as category1_name, c2.name as category2_name , COUNT(u.id) AS userCount, (select count(id) from like_history where receiver_id = m.id and status = 'active') as likeCount from meetings m left join meetings_users u on m.id = u.meetings_id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id where m.region_code = ? and u.status = 1 group by m.id order by m.created_at desc",
     [region_code]
   );
 
@@ -45,15 +45,30 @@ exports.generalMoimEnter = async ({ meetings_id, users_id }) => {
 
 // 모임 입장
 exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
-  const [[{ count }]] = await db.query("select count(id) as count from meetings_users where meetings_id = ?", [meetings_id]);
+  const [[{ count }]] = await db.query("select count(id) as count from meetings_users where meetings_id = ? and status = 1", [meetings_id]);
 
   const [[{ max_members }]] = await db.query("select max_members from meetings where id =?", [meetings_id]);
+
+  console.log("count", count, max_members);
 
   if (count === max_members) {
     return { CODE: "EM002" };
   }
 
   const [existingData] = await db.query("SELECT * FROM meetings_users WHERE meetings_id = ? AND users_id = ?", [meetings_id, users_id]);
+
+  // console.log("existingData", existingData[0].status);
+
+  // const status = existingData[0].status;
+
+  // if (status === 1) {
+  //   // 재입장
+  // } else if (status === 0) {
+  //   // 신청 결과 중
+  // } else if (status === -1) {
+  //   // 퇴장했던 사람
+  //   // type 3이면 입장 처리 4이면 신청
+  // }
 
   if (existingData.length > 0) {
     const [rows] = await db.query("UPDATE meetings_users SET status = ?, last_active_time = ? WHERE meetings_id = ? AND users_id = ?", [
@@ -62,7 +77,7 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
       meetings_id,
       users_id,
     ]);
-    return rows;
+    return { DATA: rows, CODE: "EM000" };
   } else {
     const [rows] = await db.query("INSERT INTO meetings_users (meetings_id, users_id, status, last_active_time) VALUES (?, ?, ?, ?)", [
       meetings_id,
@@ -163,10 +178,12 @@ exports.sendMessage = async (data) => {
 };
 
 // 미팅 데이터 조회
-exports.getMeetingData = async (data) => {
+exports.getMeetingData = async ({ meetings_id }) => {
+  console.log("meee", meetings_id);
+
   const [rows] = await db.query(
     "SELECT m.*, u.nickname AS creator_name, c.name AS category1_name, c2.name AS category2_name, COUNT(mu.id) AS userCount, (select count(id) from like_history where receiver_id = ? and status = 'active') as likeCount FROM meetings m JOIN users u ON m.creator_id = u.id JOIN category c ON m.category1 = c.id JOIN category c2 ON m.category2 = c2.id LEFT JOIN meetings_users mu ON mu.meetings_id = m.id AND mu.status = 1 WHERE m.id = ? GROUP BY m.id;",
-    [data.meetings_id, data.meetings_id]
+    [meetings_id, meetings_id]
   );
 
   return rows[0];
@@ -231,8 +248,8 @@ exports.handleLeaveMeeting = async ({ users_id, meetings_id }) => {
   const [existingData] = await db.query("select * from meetings_users where users_id = ? and meetings_id = ?", [users_id, meetings_id]);
 
   if (existingData.length > 0) {
-    const [rows] = await db.query("update meetings_users set status = ?, updated_at = ?", [-1, new Date()]);
-    return rows;
+    const [rows] = await db.query("update meetings_users set status = ?, updated_at = ? where users_id = ? and meetings_id = ?", [-1, new Date(), users_id, meetings_id]);
+    return { DATA: rows, CODE: "LM000" };
   } else {
     return;
   }

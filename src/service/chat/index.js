@@ -58,9 +58,12 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
 
     const target = myList.find((v) => v.meetings_id === meetings_id && v.users_id === users_id);
 
+    console.log("targettarget", target);
+
     const isApplied = target && Object.keys(target).length > 0;
     const isMember = target?.status === 1;
 
+    console.log();
     if (isMember) {
       if (fcmToken) {
         fcm.handleSubscribeTopic({ token: fcmToken, topic: meetings_id });
@@ -168,16 +171,16 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
 exports.getMyList = async ({ socket, pubClient, getAsync, setExAsync }, { data }) => {
   console.log("dddd", data);
 
-  const myListCache = await getAsync(`myList:${data.id}`);
+  const myListCache = await getAsync(`myList:${data.user_id}`);
 
-  const myList = myListCache ? JSON.parse(myListCache) : await moimModel.getMyList({ users_id: data.id });
+  const myList = myListCache ? JSON.parse(myListCache) : await moimModel.getMyList({ users_id: data.user_id });
 
   if (!myListCache) {
-    await setExAsync(`myList:${data.id}`, 3600, JSON.stringify(myList));
+    await setExAsync(`myList:${data.user_id}`, 3600, JSON.stringify(myList));
   }
 
   await pubClient.publish(
-    "meetingRoom",
+    "message",
     JSON.stringify({
       room: socket.id,
       event: "myList",
@@ -246,8 +249,8 @@ exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExA
     type: data.type,
     category1: data.category1,
     category2: data.category2,
+    date: data.date,
   });
-  console.log("generateMeeting res", res);
 
   // 생성 성공
   if (res.affectedRows > 0) {
@@ -536,9 +539,72 @@ exports.handleLikeMoim = async ({ socket, pubClient, getAsync, setExAsync }, { u
 };
 
 // 모임 나가기
-exports.handleLeaveMoim = async ({ socket, pubClient, getAsync, setExAsync }, { users_id, meetings_id }) => {
+exports.handleLeaveMoim = async ({ socket, pubClient, getAsync, setExAsync }, { users_id, meetings_id, region_code }) => {
+  const meetingRoom = `${region_code}:${meetings_id}`;
   // meetings_users 테이블 상태 변경
-  await moimModel.handleLeaveMeeting({ users_id, meetings_id });
+  const res = await moimModel.handleLeaveMeeting({ users_id, meetings_id });
+
+  const userInfo = await findByUser(users_id);
+  const meetingsUsersCache = await getAsync(`meetingsUsers:${region_code}:${meetings_id}`);
+  const meetingsUsers = meetingsUsersCache ? JSON.parse(meetingsUsersCache) : await moimModel.getMeetingsUsers({ meetings_id });
+
+  if (res.CODE === "LM000") {
+    const res = await moimModel.sendMessage({
+      meetings_id,
+      contents: encryptMessage(`${userInfo?.nickname}님이 방을 나갔습니다.`),
+      users_id,
+      users: meetingsUsers.map((v) => v.users_id).join(","),
+      admin: 1,
+    });
+
+    console.log("rrrr", res);
+
+    const message = await moimModel.getMessage(meetings_id, res.insertId);
+
+    const decryptMes = decryptMessage(message.contents);
+
+    pubClient.publish(
+      "meetingRoom",
+      JSON.stringify({
+        room: `${region_code}:${meetings_id}`,
+        event: "receiveMessage",
+        data: { ...message, contents: decryptMes },
+      })
+    );
+  }
+
+  const [meetingList, meetingData, myList] = await Promise.all([moimModel.getMeetingList({ region_code }), moimModel.getMeetingData({ meetings_id }), moimModel.getMyList({ users_id })]);
+
+  pubClient.publish(
+    "region_code",
+    JSON.stringify({
+      room: region_code,
+      event: "list",
+      data: meetingList,
+    })
+  );
+
+  pubClient.publish(
+    "meetingRoom",
+    JSON.stringify({
+      room: meetingRoom,
+      event: "meetingData",
+      data: meetingData,
+    })
+  );
+
+  pubClient.publish(
+    "message",
+    JSON.stringify({
+      room: socket.id,
+      event: "myList",
+      data: myList,
+    })
+  );
+
+  setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(meetingList));
+  setExAsync(`meetingData:${region_code}:${meetings_id}`, 3600 * 24 * 15, JSON.stringify(meetingData));
+  setExAsync(`myList:${users_id}`, 3600, JSON.stringify(myList));
 };
 
 const handleDecryptMessages = (data) => {
