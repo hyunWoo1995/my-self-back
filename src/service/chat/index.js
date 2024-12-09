@@ -547,14 +547,15 @@ const handleDecryptMessages = (data) => {
 };
 
 const handleActiveTimeMeeting = async ({ pubClient, getAsync, setExAsync, meetingList, region_code, meetings_id }) => {
-  console.log("handleActiveTimeMeeting", region_code, meetings_id);
+  console.log("handleActiveTimeMeeting", region_code, meetings_id, typeof meetings_id);
 
   let addActiveTimeList;
 
   if (meetings_id) {
     const meetingsUserData = await getAsync(`meetingsUsers:${region_code}:${meetings_id}`);
+
     addActiveTimeList = meetingList.map((v) => {
-      if (v.id === meetings_id) {
+      if (v.id == meetings_id) {
         const max_active_time_item = JSON.parse(meetingsUserData)
           ?.map((v) => v.last_active_time)
           .sort((a, b) => new Date(b) - new Date(a))[0];
