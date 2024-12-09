@@ -1,8 +1,10 @@
 const moimModel = require("../../model/moimModel");
+const userModel = require("../../model/userModel");
 const { findByUser, findByUserEmail } = require("../../model/userModel");
 const { decryptMessage, encryptMessage } = require("../../utils/aes");
 const onesignal = require("./onesignal");
 const fcm = require("../../../firebase");
+const addressModel = require("../../model/addressModel");
 
 let typingUsers = [];
 const typingTimers = {}; // To store timers for each user
@@ -16,6 +18,7 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
 
     // 현재 room에 접속한 사용자 목록 요청
     const usersInRoom = this.getUsersInRoom(io, meetingRoom);
+    console.log("usersInRoom", usersInRoom);
 
     await pubClient.publish(
       "meetingRoom",
@@ -231,7 +234,11 @@ exports.handleJoinRegion = async ({ socket, pubClient, getAsync, setExAsync }, {
 
 // 모임 생성
 exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExAsync }, data) => {
-  console.log("user", data.users_id);
+  console.log("handleGenerateMeetinghandleGenerateMeetinghandleGenerateMeeting", data);
+
+  // 주소 검색
+  // const [existingAddress] = await addressModel.getAddress({ keyword: data.address });
+
   if (data.name.length < 5 || data.name.length > 40 || data.description.length < 20 || data.description.length > 500) {
     io.to(socket.id).emit("error", {
       message: "모임 제목 또는 모임 설명이 조건에 맞지 않습니다.",
@@ -239,6 +246,29 @@ exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExA
     });
     return;
   }
+
+  // let region_code;
+
+  // region_code = await userModel.findByUserAddresses({
+  //   address: data.address,
+  // });
+
+  // console.log("rere", region_code);
+
+  // if (!region_code) {
+  //   // 가장 높은 address_code 가져오기
+  //   const highestCode = await userModel.getHighestAddressCode();
+  //   const newCodeNumber = highestCode ? parseInt(highestCode.replace("RC", ""), 10) + 1 : 1; // 기본값 1
+  //   console.log("highestCode", highestCode);
+  //   console.log("newCodeNumber", newCodeNumber);
+  //   region_code = `RC${String(newCodeNumber).padStart(3, "0")}`; // "RC001" 형식 유지
+  // }
+
+  // await userModel.createUserAddresses({
+  //   user_id: data.users_id,
+  //   address: data.address,
+  //   address_code: region_code,
+  // });
 
   const res = await moimModel.generateMeeting({
     name: data.name,

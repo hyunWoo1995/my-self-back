@@ -38,9 +38,11 @@ module.exports = async (io) => {
     });
 
     // room에서 나가기
-    socket.on("leaveMeeting", ({ region_code, meetings_id }) => {
+    socket.on("exitMoim", ({ region_code, meetings_id }) => {
       const meetingRoom = `${region_code}:${meetings_id}`;
       socket.leave(meetingRoom);
+      const usersInRoom = socketService.getUsersInRoom(io, meetingRoom);
+      console.log("exitMoim", usersInRoom);
     });
 
     // 모임 입장 신청
