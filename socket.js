@@ -24,7 +24,10 @@ module.exports = async (io) => {
     socket.on("getMyList", (data) => socketService.getMyList({ socket, pubClient, getAsync, setExAsync }, data));
 
     // 지역 입장
-    socket.on("join", ({ user, region_code }) => socketService.handleJoinRegion({ socket, pubClient, getAsync, setExAsync }, { user, region_code }));
+    socket.on("join", ({ user, region_code }) => {
+      console.log("join");
+      socketService.handleJoinRegion({ socket, pubClient, getAsync, setExAsync }, { user, region_code });
+    });
 
     // 모임 생성
     socket.on("generateMeeting", (data) => socketService.handleGenerateMeeting({ socket, io, pubClient, getAsync, setExAsync }, data));
@@ -48,6 +51,8 @@ module.exports = async (io) => {
 
     // room에서 나가기 (메세지 받음)
     socket.on("blurMoim", ({ region_code, meetings_id }) => {
+      console.log("sdfsdf", region_code, meetings_id);
+
       const meetingRoom = `${region_code}:${meetings_id}`;
       socket.leave(`${meetingRoom}:active`);
     });
@@ -72,6 +77,6 @@ module.exports = async (io) => {
     socket.on("leaveMoim", ({ users_id, meetings_id, region_code }) => socketService.handleLeaveMoim({ socket, pubClient, getAsync, setExAsync }, { users_id, meetings_id, region_code }));
 
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)
-    socket.on("disconnect", () => {});
+    socket.on("disconnect", (e) => console.log("disconnect", e));
   });
 };

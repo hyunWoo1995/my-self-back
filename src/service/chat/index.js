@@ -402,6 +402,8 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
 exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, contents, users_id, reply_id, tag_id }) => {
   const meetingRoom = `${region_code}:${meetings_id}`;
 
+  console.log("region_code, meetings_id, contents, users_id, reply_id, tag_id", region_code, meetings_id, contents, users_id, reply_id, tag_id);
+
   const meetingsUsersCache = await getAsync(`meetingsUsers:${meetingRoom}`);
 
   const meetingsUsers = meetingsUsersCache ? JSON.parse(meetingsUsersCache) : await moimModel.getMeetingsUsers({ meetings_id });
@@ -425,6 +427,8 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
     fcm.topicSendMeesage({ subtitle: meetingData.name, body: contents, topic: meetings_id, sender_id: users_id });
 
     const usersInRoom = this.getUsersInRoom(io, `${meetingRoom}:active`);
+
+    console.log("usersInRoomusersInRoom", usersInRoom);
 
     if (usersInRoom) {
       await moimModel.modifyActiveTime({ meetings_id, users_id: usersInRoom });
@@ -473,7 +477,6 @@ exports.handleChatTyping = async ({ socket, pubClient, getAsync, setExasync }, {
   const nickname = await userModel.findByUserNickname(users_id);
 
   const userIndex = typingUsers.findIndex((v) => v.users_id === users_id);
-
 
   if (userIndex === -1) {
     typingUsers.push({ users_id, nickname });
