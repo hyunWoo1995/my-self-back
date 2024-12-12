@@ -11,6 +11,8 @@ const typingTimers = {}; // To store timers for each user
 
 // 모임 입장
 exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, users_id, type, fcmToken, afterBlur }) => {
+  console.log("afterBlurafterBlur", afterBlur ? "true" : "false");
+
   try {
     const meetingRoom = `${region_code}:${meetings_id}`;
     socket.join(meetingRoom);

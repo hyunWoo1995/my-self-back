@@ -34,6 +34,8 @@ module.exports = async (io) => {
 
     // 모임 입장
     socket.on("enterMeeting", (data) => {
+      console.log("dddddasdasdasd", data);
+
       socketService.handleEnterMeeting({ socket, pubClient, getAsync, setExAsync, io }, data);
     });
 
