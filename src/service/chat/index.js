@@ -648,7 +648,13 @@ exports.handleLeaveMoim = async ({ socket, pubClient, getAsync, setExAsync }, { 
 
 const handleDecryptMessages = (data) => {
   console.log("data", data);
-  return data.map((v) => ({ ...v, contents: decryptMessage(v.contents) }));
+  return data.map((v) => {
+    if (v.reply_contents) {
+      return { ...v, contents: decryptMessage(v.contents), reply_contents: decryptMessage(v.reply_contents) };
+    } else {
+      return { ...v, contents: decryptMessage(v.contents) };
+    }
+  });
 };
 
 const handleActiveTimeMeeting = async ({ pubClient, getAsync, setExAsync, meetingList, region_code, meetings_id }) => {

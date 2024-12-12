@@ -120,7 +120,7 @@ exports.modifyActiveTime = async ({ meetings_id, users_id }) => {
 // 메세지 전체 조회
 exports.getMessages = async ({ meetings_id, length }) => {
   const [lists] = await db.query(
-    "SELECT m.id, m.contents, m.created_at, m.users_id, m.meetings_id, m.users, u.nickname, m.admin, m.reply_id FROM moimmoim.messages AS m left join users u on m.users_id = u.id where meetings_id = ? ORDER BY  m.id DESC limit 0,20;",
+    "select m.*, m2.contents as reply_contents, u.nickname as reply_nickname from messages m left join messages m2 on m2.id  = m.reply_id left join users u on u.id = m2.users_id where m.meetings_id = ? ORDER BY  m.id DESC limit 0,20;",
     [meetings_id]
   );
 
@@ -160,7 +160,7 @@ exports.getMessage = async (meetings_id, id) => {
 // 메세지 더 받아오기
 exports.getMoreMessage = async ({ meetings_id, length }) => {
   const [rows] = await db.query(
-    "SELECT m.id, m.contents, m.created_at, m.users_id, m.meetings_id, m.users, u.nickname, m.admin, m.reply_id FROM messages AS m left join users u on m.users_id = u.id where meetings_id = ? ORDER BY  m.id DESC limit ?,20;",
+    "select m.*, m2.contents as reply_contents, u.nickname as reply_nickname from messages m left join messages m2 on m2.id  = m.reply_id left join users u on u.id = m2.users_id where m.meetings_id = ? ORDER BY  m.id DESC limit ?,20;",
     [meetings_id, length]
   );
 
