@@ -43,11 +43,21 @@ const User = {
     const user_id = params.user_id;
     const address = params.address;
     const address_code = params.address_code;
+    const region_1depth_name = params.region_1depth_name;
+    const region_2depth_name = params.region_2depth_name;
+    const region_3depth_name = params.region_3depth_name;
     console.log("params", params);
     const [result] = await db.query(
-      `INSERT INTO user_addresses (user_id, address, address_code) 
-      VALUES (?, ?, ?)`,
-      [user_id, address, address_code]
+      `INSERT INTO user_addresses (user_id, address, address_code,region_1depth_name,region_2depth_name,region_3depth_name) 
+      VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        user_id,
+        address,
+        address_code,
+        region_1depth_name,
+        region_2depth_name,
+        region_3depth_name,
+      ]
     );
     return result.insertId;
   },
@@ -68,7 +78,9 @@ const User = {
 
   // 닉네임으로 사용자 찾기
   async findByNickname(nickname) {
-    const [rows] = await db.query("SELECT * FROM users WHERE nickname = ?", [nickname]);
+    const [rows] = await db.query("SELECT * FROM users WHERE nickname = ?", [
+      nickname,
+    ]);
     return rows[0];
   },
 
@@ -90,7 +102,10 @@ const User = {
             SELECT JSON_ARRAYAGG(
                       JSON_OBJECT(
                           'address', ua.address,
-                          'address_code', ua.address_code
+                          'address_code', ua.address_code,
+                          'region_1depth_name', ua.region_1depth_name,
+                          'region_2depth_name', ua.region_2depth_name,
+                          'region_3depth_name', ua.region_3depth_name
                       )
                   )
             FROM user_addresses ua
