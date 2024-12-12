@@ -148,7 +148,10 @@ exports.getMessages = async ({ meetings_id, length }) => {
 
 // 메세지 단일 조회
 exports.getMessage = async (meetings_id, id) => {
-  const [rows] = await db.query("select m.*, u.nickname from messages m left join users u on m.users_id = u.id where meetings_id = ? and m.id= ?", [meetings_id, id]);
+  const [rows] = await db.query(
+    "select m.*, m2.contents as reply_contents, u.nickname as reply_nickname from messages m left join messages m2 on m2.id  = m.reply_id left join users u on u.id = m2.users_id where m.meetings_id = ? and m.id= ?",
+    [meetings_id, id]
+  );
 
   // const [meetingsUsers] = await db.query("select * from meetings_users where meetings_id = ? and status = 1", [meetings_id]);
 

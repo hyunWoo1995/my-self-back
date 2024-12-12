@@ -402,8 +402,6 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
 exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, contents, users_id, reply_id, tag_id }) => {
   const meetingRoom = `${region_code}:${meetings_id}`;
 
-  console.log("region_code, meetings_id, contents, users_id, reply_id, tag_id", region_code, meetings_id, contents, users_id, reply_id, tag_id);
-
   const meetingsUsersCache = await getAsync(`meetingsUsers:${meetingRoom}`);
 
   const meetingsUsers = meetingsUsersCache ? JSON.parse(meetingsUsersCache) : await moimModel.getMeetingsUsers({ meetings_id });
@@ -455,7 +453,7 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
       JSON.stringify({
         room: meetingRoom,
         event: "receiveMessage",
-        data: { ...message, contents: decryptMes },
+        data: { ...message, contents: decryptMes, reply_contents: decryptMessage(message.reply_contents) },
       })
     );
 
