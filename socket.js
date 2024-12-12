@@ -58,7 +58,7 @@ module.exports = async (io) => {
     );
     // 메시지 수신 및 전파 (Send message to a meeting room)
     socket.on("sendMessage", ({ region_code, meetings_id, contents, users_id, tag_id }) =>
-      socketService.handleSendMessage({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, contents, users_id, tag_id })
+      socketService.handleSendMessage({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, contents, users_id, tag_id, reply_id })
     );
 
     socket.on("readMessage", async ({ meetings_id, users_id }) => {
