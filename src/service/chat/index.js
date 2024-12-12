@@ -10,7 +10,7 @@ let typingUsers = [];
 const typingTimers = {}; // To store timers for each user
 
 // 모임 입장
-exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, users_id, type, fcmToken }) => {
+exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, users_id, type, fcmToken, afterBlur }) => {
   try {
     const meetingRoom = `${region_code}:${meetings_id}`;
     socket.join(meetingRoom);
@@ -149,15 +149,16 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
       await setExAsync(`messages:${region_code}:${meetings_id}`, 3600, JSON.stringify(messages));
     }
 
-    await pubClient.publish(
-      "meetingRoom",
-      JSON.stringify({
-        room: meetingRoom,
-        event: "messages",
-        data: { list: decryptMessages, total: messages.total },
-      })
-    );
-
+    if (!afterBlur) {
+      await pubClient.publish(
+        "meetingRoom",
+        JSON.stringify({
+          room: meetingRoom,
+          event: "messages",
+          data: { list: decryptMessages, total: messages.total },
+        })
+      );
+    }
     await pubClient.publish(
       "meetingRoom",
       JSON.stringify({
@@ -173,7 +174,9 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
 
 // 나의 모임 목록
 exports.getMyList = async ({ socket, pubClient, getAsync, setExAsync }, { data }) => {
-  console.log("dddd", data);
+  console.log("dddd12345", data);
+
+  if (!data) return;
 
   const myListCache = await getAsync(`myList:${data.user_id}`);
 
@@ -445,15 +448,22 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
     }
 
     const message = await moimModel.getMessage(meetings_id, res.insertId);
-
     const decryptMes = decryptMessage(message.contents);
+
+    let data;
+
+    if (message.reply_contents) {
+      data = { ...message, contents: decryptMes, reply_contents: decryptMessage(message.reply_contents) };
+    } else {
+      data = { ...message, contents: decryptMes };
+    }
 
     await pubClient.publish(
       "meetingRoom",
       JSON.stringify({
         room: meetingRoom,
         event: "receiveMessage",
-        data: { ...message, contents: decryptMes, reply_contents: decryptMessage(message.reply_contents) },
+        data,
       })
     );
 
