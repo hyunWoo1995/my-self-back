@@ -41,14 +41,7 @@ const User = {
     const [result] = await db.query(
       `INSERT INTO user_addresses (user_id, address, address_code,region_1depth_name,region_2depth_name,region_3depth_name) 
       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        user_id,
-        address,
-        address_code,
-        region_1depth_name,
-        region_2depth_name,
-        region_3depth_name,
-      ]
+      [user_id, address, address_code, region_1depth_name, region_2depth_name, region_3depth_name]
     );
     return result.insertId;
   },
@@ -69,9 +62,7 @@ const User = {
 
   // 닉네임으로 사용자 찾기
   async findByNickname(nickname) {
-    const [rows] = await db.query("SELECT * FROM users WHERE nickname = ?", [
-      nickname,
-    ]);
+    const [rows] = await db.query("SELECT * FROM users WHERE nickname = ?", [nickname]);
     return rows[0];
   },
 
