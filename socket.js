@@ -19,7 +19,9 @@ module.exports = async (io) => {
 
   io.on("connection", (socket) => {
     socket.emit("message", socket.id);
-    socket.on("userData", (data) => socketService.getMyList({ socket, pubClient, getAsync, setExAsync }, data));
+
+    // 나의 모임 목록
+    socket.on("getMyList", (data) => socketService.getMyList({ socket, pubClient, getAsync, setExAsync }, data));
 
     // 지역 입장
     socket.on("join", ({ user, region_code }) => socketService.handleJoinRegion({ socket, pubClient, getAsync, setExAsync }, { user, region_code }));
@@ -34,16 +36,17 @@ module.exports = async (io) => {
 
     // 모임 유저 목록
     socket.on("getUserList", ({ meetings_id, region_code }) => {
-      socketService.getUserList({ socket, pubClient, getAsync, setExAsync }, { meetings_id, region_code });
+      socketService.getUser의List({ socket, pubClient, getAsync, setExAsync }, { meetings_id, region_code });
     });
 
-    // room에서 나가기
+    // room에서 나가기 (메세지 안받음)
     socket.on("exitMoim", ({ region_code, meetings_id }) => {
       const meetingRoom = `${region_code}:${meetings_id}`;
       socket.leave(meetingRoom);
       socket.leave(`${meetingRoom}:active`);
     });
 
+    // room에서 나가기 (메세지 받음)
     socket.on("blurMoim", ({ region_code, meetings_id }) => {
       const meetingRoom = `${region_code}:${meetings_id}`;
       socket.leave(`${meetingRoom}:active`);

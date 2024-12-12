@@ -60,7 +60,7 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
       await setExAsync(`myList:${users_id}`, 3600, JSON.stringify(myList));
     }
 
-    const target = myList.find((v) => v.meetings_id === meetings_id && v.users_id === users_id);
+    const target = myList.find((v) => v.id === meetings_id && v.users_id === users_id);
 
     console.log("targettarget", target);
 
@@ -402,7 +402,11 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
 exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, contents, users_id, reply_id, tag_id }) => {
   const meetingRoom = `${region_code}:${meetings_id}`;
 
-  const meetingsUsers = await getAsync(`meetingsUsers:${meetingRoom}`);
+  const meetingsUsersCache = await getAsync(`meetingsUsers:${meetingRoom}`);
+
+  const meetingsUsers = meetingsUsersCache ? JSON.parse(meetingsUsersCache) : await moimModel.getMeetingsUsers({ meetings_id });
+
+  console.log("eee", meetingsUsers);
 
   const res = await moimModel.sendMessage({
     region_code,
@@ -410,9 +414,7 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
     contents: encryptMessage(contents),
     users_id,
     reply_id,
-    users: JSON.parse(meetingsUsers)
-      .map((v) => v.users_id)
-      .join(","),
+    users: meetingsUsers?.map((v) => v.users_id)?.join(","),
     tag_id,
   });
 
@@ -468,10 +470,13 @@ exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io
 exports.handleChatTyping = async ({ socket, pubClient, getAsync, setExasync }, { region_code, meetings_id, users_id }) => {
   const meetingRoom = `${region_code}:${meetings_id}`;
 
+  const nickname = await userModel.findByUserNickname(users_id);
+
   const userIndex = typingUsers.findIndex((v) => v.users_id === users_id);
 
+
   if (userIndex === -1) {
-    typingUsers.push({ users_id });
+    typingUsers.push({ users_id, nickname });
     await pubClient.publish(
       "meetingRoom",
       JSON.stringify({

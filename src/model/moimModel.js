@@ -29,9 +29,14 @@ exports.getMeetingItem = async ({ meetings_id }) => {
   return rows[0];
 };
 
-// 나의 모임 조회
+// 나의 모임 내역 조회
 exports.getMyList = async ({ users_id }) => {
-  const [rows] = await db.query("select * from meetings_users where users_id = ?", [users_id]);
+  // const [rows] = await db.query("select * from meetings_users where users_id = ?", [users_id]);
+
+  const [rows] = await db.query(
+    "select m.*, mu.users_id, mu.status, mu.last_active_time, c.name as category1_name, c2.name as category2_name, max(a.address), count(mu.users_id) as userCount, (select count(id) from like_history where receiver_id = m.id and status = 'active') as likeCount from meetings_users mu join meetings m on mu.meetings_id = m.id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id join user_addresses a on a.address_code = m.region_code where users_id = ? group by mu.meetings_id",
+    [users_id]
+  );
 
   return rows;
 };
@@ -216,11 +221,6 @@ exports.getMeetingsUsers = async ({ meetings_id }) => {
   const [rows] = await db.query("select mu.*, u.nickname from meetings_users mu join users u on mu.users_id = u.id  where meetings_id = ?", [meetings_id]);
 
   return rows;
-};
-
-// 모임-유저 이름 조회
-exports.getMeetingUsersName = async ({ meetings_id, region_code }) => {
-  const [rows] = await db.query("select u.id, u.name from meetings_users mu join users u on mu.users_id = u.id where mu.meetings_id = ?", [meetings_id]);
 };
 
 // 모임 좋아요

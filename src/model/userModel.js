@@ -15,16 +15,7 @@ const User = {
     const [result] = await db.query(
       `INSERT INTO users (email, password, nickname, birthdate, gender, provider, profile_image_name, ip) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        email,
-        password,
-        nickname,
-        birthdate,
-        gender,
-        provider,
-        profileImageName,
-        ip,
-      ]
+      [email, password, nickname, birthdate, gender, provider, profileImageName, ip]
     );
     return result.insertId;
   },
@@ -123,6 +114,12 @@ const User = {
     return rows[0].email;
   },
 
+  async findByUserNickname(id) {
+    const [[{ nickname }]] = await db.query("select nickname from users where id = ?", [id]);
+
+    return nickname;
+  },
+
   // 회원 주소정보 가져오기
   async findByUserAddresses(params) {
     const user_id = params.user_id || null;
@@ -145,9 +142,7 @@ const User = {
   },
   // 가장 높은 address_code 가져오기
   async getHighestAddressCode() {
-    const [rows] = await db.query(
-      "SELECT MAX(address_code) AS max_code FROM user_addresses"
-    );
+    const [rows] = await db.query("SELECT MAX(address_code) AS max_code FROM user_addresses");
     return rows[0]?.max_code || null;
   },
 };
