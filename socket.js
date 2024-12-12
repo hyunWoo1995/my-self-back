@@ -36,7 +36,7 @@ module.exports = async (io) => {
 
     // 모임 유저 목록
     socket.on("getUserList", ({ meetings_id, region_code }) => {
-      socketService.getUser의List({ socket, pubClient, getAsync, setExAsync }, { meetings_id, region_code });
+      socketService.getUserList({ socket, pubClient, getAsync, setExAsync }, { meetings_id, region_code });
     });
 
     // room에서 나가기 (메세지 안받음)
