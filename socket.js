@@ -57,7 +57,7 @@ module.exports = async (io) => {
       socketService.handleJoinMeeting({ socket, pubClient, getAsync, setExAsync, io }, { meetings_id, fcmToken, region_code, type, users_id })
     );
     // 메시지 수신 및 전파 (Send message to a meeting room)
-    socket.on("sendMessage", ({ region_code, meetings_id, contents, users_id, tag_id }) =>
+    socket.on("sendMessage", ({ region_code, meetings_id, contents, users_id, tag_id, reply_id }) =>
       socketService.handleSendMessage({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, contents, users_id, tag_id, reply_id })
     );
 
