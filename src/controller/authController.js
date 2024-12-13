@@ -2,7 +2,7 @@ const jwt = require("../utils/jwt-util");
 const bcrypt = require("bcryptjs");
 const { redisClient, getRedisData } = require("../utils/redis");
 const userModel = require("../model/userModel");
-const interestModel = require("../model/interestModel");
+const categoryModel = require("../model/categoryModel");
 const axios = require("axios");
 const mailSand = require("../utils/nodemailer");
 const azureUtil = require("../utils/azureUtil");
@@ -383,7 +383,7 @@ const authController = {
 
   async getInterests(req, res) {
     try {
-      const interestList = await interestModel.getInterestList();
+      const interestList = await categoryModel.getCategorysInterest();
       res.sendSuccess("성공", interestList);
     } catch (error) {
       res.sendError();
