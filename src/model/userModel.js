@@ -116,11 +116,11 @@ const User = {
             SELECT JSON_ARRAYAGG(
                       JSON_OBJECT(
                           'interest_id', ui.interest_id,
-                          'interest_name', i.interest
+                          'interest_name', c.interest
                       )
                   )
             FROM user_interests ui
-            LEFT JOIN interests i ON ui.interest_id = i.id
+            LEFT JOIN category c ON ui.interest_id = c.id
             WHERE ui.user_id = u.id
         ) AS interests
     FROM users u
