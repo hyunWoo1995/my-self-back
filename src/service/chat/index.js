@@ -156,9 +156,9 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
 
     if (!afterBlur) {
       await pubClient.publish(
-        "meetingRoom",
+        "message",
         JSON.stringify({
-          room: meetingRoom,
+          room: socket.id,
           event: "messages",
           data: { list: decryptMessages.filter((v) => new Date(v.created_at).getTime() >= userJoinDate), total: messages.total },
         })
