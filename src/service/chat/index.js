@@ -33,14 +33,14 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
       })
     );
 
-    const [myListCache, messagesCache, meetingListCache, meetingsUsersCache, moimDataCache, myMoimListCache] = await Promise.all([
+    const [myListCache, messagesCache, meetingListCache, meetingsUsersCache] = await Promise.all([
       getAsync(`myList:${users_id}`),
       getAsync(`messages:${region_code}:${meetings_id}`),
       getAsync(`meetingList:${region_code}`),
       // getAsync(`meetingData:${region_code}:${meetings_id}`),
       getAsync(`meetingsUsers:${region_code}:${meetings_id}`),
-      smembers(`moimData:${meetings_id}`),
-      smembers(`myMoimList:${users_id}`),
+      // smembers(`moimData:${meetings_id}`),
+      // smembers(`myMoimList:${users_id}`),
     ]);
 
     let meetingsUsers;
