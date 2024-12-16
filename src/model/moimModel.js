@@ -12,10 +12,35 @@ exports.generateMeeting = async ({ name, region_code, maxMembers, users_id, desc
   return rows;
 };
 
+// 모임 수정
+exports.editMeeting = async ({ meetings_id, ...updateFields }) => {
+  if (!meetings_id) {
+    throw new Error("meetings_id is required");
+  }
+
+  // 업데이트할 필드가 없으면 에러 처리
+  if (Object.keys(updateFields).length === 0) {
+    throw new Error("No fields to update");
+  }
+
+  // 동적으로 SQL 쿼리 생성
+  const keys = Object.keys(updateFields); // 업데이트할 컬럼 이름
+  const values = Object.values(updateFields); // 업데이트할 컬럼 값
+  const placeholders = keys.map((key) => `${key} = ?`).join(", "); // `column = ?` 형태로 변환
+
+  // 최종 SQL 쿼리
+  const query = `UPDATE meetings SET ${placeholders} WHERE id = ?`;
+
+  // 쿼리 실행
+  const [result] = await db.query(query, [...values, meetings_id]);
+
+  return result;
+};
+
 // 모임 조회
 exports.getMeetingList = async ({ region_code }) => {
   const [rows] = await db.query(
-    "select m.*, c.name as category1_name, c2.name as category2_name , COUNT(u.id) AS userCount, (select count(id) from like_history where receiver_id = m.id and status = 'active') as likeCount from meetings m left join meetings_users u on m.id = u.meetings_id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id where m.region_code = ? and u.status = 1 group by m.id order by m.created_at desc",
+    "select m.*, c.name as category1_name, c2.name as category2_name , COUNT(u.id) AS userCount, (select count(id) from like_history where receiver_id = m.id and status = 'active') as likeCount from meetings m left join meetings_users u on m.id = u.meetings_id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id where m.region_code = ? group by m.id order by m.created_at desc",
     [region_code]
   );
 
@@ -34,11 +59,18 @@ exports.getMyList = async ({ users_id }) => {
   // const [rows] = await db.query("select * from meetings_users where users_id = ?", [users_id]);
 
   const [rows] = await db.query(
-    "select m.*, mu.users_id, mu.status, mu.last_active_time, c.name as category1_name, c2.name as category2_name, max(a.address) as address, count(mu.users_id) as userCount, (select count(id) from like_history where receiver_id = m.id and status = 'active') as likeCount from meetings_users mu join meetings m on mu.meetings_id = m.id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id left join user_addresses a on a.address_code = m.region_code where users_id = ? group by mu.meetings_id",
+    "select m.*, mu.users_id, mu.status, mu.last_active_time, c.name as category1_name, c2.name as category2_name, max(ua.address) as address, count(mu.users_id) as userCount, (select count(id) from like_history where receiver_id = m.id and status = 'active') as likeCount from meetings_users mu join meetings m on mu.meetings_id = m.id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id LEFT JOIN (SELECT address_code, MAX(address) AS address FROM user_addresses GROUP BY address_code) ua ON ua.address_code = m.region_code where users_id = ? group by mu.meetings_id",
     [users_id]
   );
 
   return rows;
+};
+
+// 나의 모임 내역 조회 (id만) -> 배열로 전달
+exports.getMyMoimIds = async ({ users_id }) => {
+  const [rows] = await db.query("select meetings_id from meetings_users where users_id = ?", [users_id]);
+
+  return rows.map((v) => String(v.meetings_id));
 };
 
 // 일반 모임 입장
@@ -82,7 +114,7 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
       meetings_id,
       users_id,
     ]);
-    return { DATA: rows, CODE: "EM000" };
+    return { DATA: rows, CODE: "EM000", update: true };
   } else {
     const [rows] = await db.query("INSERT INTO meetings_users (meetings_id, users_id, status, last_active_time) VALUES (?, ?, ?, ?)", [
       meetings_id,
@@ -181,7 +213,7 @@ exports.sendMessage = async (data) => {
     data.users_id,
     data.users,
     data.admin || 0,
-    data.reploy_id || 0,
+    data.reply_id || 0,
     data.tag_id || 0,
   ]);
 

@@ -15,7 +15,7 @@ const typingTimers = {}; // To store timers for each user
 
 // socket.js
 module.exports = async (io) => {
-  const { pubClient, getAsync, setExAsync } = await redisService.initRedis(io);
+  const { pubClient, getAsync, setExAsync, smembers, getMoimDetails } = await redisService.initRedis(io);
 
   io.on("connection", (socket) => {
     socket.emit("message", socket.id);
@@ -36,7 +36,7 @@ module.exports = async (io) => {
     socket.on("enterMeeting", (data) => {
       console.log("dddddasdasdasd", data);
 
-      socketService.handleEnterMeeting({ socket, pubClient, getAsync, setExAsync, io }, data);
+      socketService.handleEnterMeeting({ socket, pubClient, getAsync, setExAsync, io, smembers, getMoimDetails }, data);
     });
 
     // 모임 유저 목록

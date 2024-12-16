@@ -74,8 +74,44 @@ function downloadSasUrl(containerName, blobName, expiryHours = 1) {
   }
 }
 
+async function ensureContainerExists(containerName) {
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+
+  const exists = await containerClient.exists();
+  if (!exists) {
+    console.log("컨테이너 생성 중...");
+    await containerClient.create();
+    await setPublicAccess(containerName);
+    console.log("컨테이너가 성공적으로 생성되었습니다!");
+  } else {
+    console.log("컨테이너가 이미 존재합니다.");
+  }
+}
+
+async function setPublicAccess(containerName) {
+  try {
+    // Azure Storage 연결 문자열
+    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+
+    // BlobServiceClient 생성
+    const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+
+    // 컨테이너 클라이언트 생성
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+
+    // 퍼블릭 액세스 설정 변경 (blob 또는 container)
+    await containerClient.setAccessPolicy("blob"); // 'blob', 'container', 또는 null (private)
+
+    console.log(`컨테이너 ${containerName}의 퍼블릭 액세스 설정이 변경되었습니다.`);
+  } catch (error) {
+    console.error("퍼블릭 액세스 설정 변경 중 오류 발생:", error.message);
+  }
+}
+
 // 모듈 내보내기
 module.exports = {
   uploadFile,
   downloadSasUrl,
+  ensureContainerExists,
+  setPublicAccess,
 };

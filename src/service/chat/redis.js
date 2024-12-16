@@ -10,6 +10,29 @@ const initRedis = async (io) => {
 
   const getAsync = promisify(pubClient.get).bind(pubClient);
   const setExAsync = promisify(pubClient.setEx).bind(pubClient);
+  const smembers = promisify(pubClient.sMembers).bind(pubClient);
+
+  async function getMoimDetails(pubClient, userId) {
+    const setKey = `myMoimList:${userId}`; // 나의 모임 리스트 키
+    const moimIds = await smembers(setKey); // 모임 ID 리스트 가져오기
+
+    console.log("sdf123", moimIds);
+    if (!moimIds.length) return []; // 모임이 없으면 빈 배열 반환
+
+    const multi = pubClient.multi();
+
+    // 각 모임 ID에 해당하는 데이터를 가져오는 명령 추가
+
+    moimIds.forEach((id) => multi.sMembers(`moimData:${String(id)}`));
+    console.log("vvv132", multi);
+
+    const results = await multi.exec();
+
+    console.log("resultsresultsresultsresults", results);
+
+    // JSON 형식으로 저장된 데이터를 파싱하여 배열 반환
+    return results?.map((data) => (data ? JSON.parse(data) : null)).filter(Boolean);
+  }
 
   const subClient = createClient({
     url: `redis://${process.env.REDIS_USERNAME}:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}/0`,
@@ -37,7 +60,7 @@ const initRedis = async (io) => {
     subClient.v4.subscribe(channel, (message) => handleRedisMessage(io, channel, message));
   });
 
-  return { pubClient, getAsync, setExAsync };
+  return { pubClient, getAsync, setExAsync, smembers, getMoimDetails };
 };
 
 const handleRedisMessage = (io, channel, message) => {

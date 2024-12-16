@@ -2,6 +2,8 @@ const moimModel = require("../model/moimModel");
 const { decryptMessage } = require("../utils/aes");
 const redisService = require("../service/chat/redis");
 const { io } = require("../../index");
+const { uploadFile, ensureContainerExists } = require("../utils/azureUtil");
+const sharp = require("sharp");
 
 exports.getCategories = async (req, res) => {
   try {
@@ -49,5 +51,39 @@ exports.handleLikeMeeting = async (req, res) => {
     res.sendSuccess("성공");
   } else {
     res.sendError("실패");
+  }
+};
+
+exports.setMoimLogo = async (req, res) => {
+  console.log(req.file, req.body.meetings_id);
+  const { meetings_id } = req.body;
+
+  const containerName = `moimlogo-${meetings_id}`;
+
+  await ensureContainerExists(containerName);
+
+  try {
+    // 이미지 최적화
+    const optimizedBuffer = await sharp(req.file.buffer)
+      .resize(500, 500, { fit: "inside" }) // 최대 500x500 크기로 조정
+      .jpeg({ quality: 80 }) // JPEG 형식, 80% 품질
+      .toBuffer();
+
+    // 파일 업로드
+    const uploadRes = await uploadFile(containerName, optimizedBuffer, req.file.originalname);
+
+    // DB 업데이트
+    const editRes = await moimModel.editMeeting({ meetings_id, logo: uploadRes.url });
+
+    console.log("editRes", editRes);
+
+    if (editRes.affectedRows > 0) {
+      res.sendSuccess("성공");
+    } else {
+      res.sendError("실패");
+    }
+  } catch (error) {
+    console.error(error);
+    res.sendError("이미지 업로드 실패");
   }
 };

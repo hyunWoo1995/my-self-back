@@ -141,6 +141,8 @@ const handleUnSubscribeTopic = ({ topic, token }) => {
 const subscribeUserToTopic = async ({ fcmToken, users_id }) => {
   console.log("fcmfcm", fcmToken, users_id);
 
+  if (!fcmToken) return;
+
   const topic = `sender_${users_id}`; // 사용자 고유 토픽
   try {
     await admin.messaging().subscribeToTopic(fcmToken, topic);

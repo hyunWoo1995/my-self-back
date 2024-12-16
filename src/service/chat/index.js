@@ -4,13 +4,13 @@ const { findByUser, findByUserEmail } = require("../../model/userModel");
 const { decryptMessage, encryptMessage } = require("../../utils/aes");
 const onesignal = require("./onesignal");
 const fcm = require("../../../firebase");
-const addressModel = require("../../model/addressModel");
+const { redisClient } = require("../../utils/redis");
 
 let typingUsers = [];
 const typingTimers = {}; // To store timers for each user
 
 // 모임 입장
-exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, users_id, type, fcmToken, afterBlur }) => {
+exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, io, smembers, getMoimDetails }, { region_code, meetings_id, users_id, type, fcmToken, afterBlur }) => {
   console.log("afterBlurafterBlur", afterBlur ? "true" : "false");
 
   try {
@@ -32,31 +32,43 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
       })
     );
 
-    const [myListCache, messagesCache, meetingListCache, meetingDataCache, meetingsUsersCache] = await Promise.all([
+    const [myListCache, messagesCache, meetingListCache, meetingsUsersCache, moimDataCache, myMoimListCache] = await Promise.all([
       getAsync(`myList:${users_id}`),
       getAsync(`messages:${region_code}:${meetings_id}`),
       getAsync(`meetingList:${region_code}`),
-      getAsync(`meetingData:${region_code}:${meetings_id}`),
+      // getAsync(`meetingData:${region_code}:${meetings_id}`),
       getAsync(`meetingsUsers:${region_code}:${meetings_id}`),
+      smembers(`moimData:${meetings_id}`),
+      smembers(`myMoimList:${users_id}`),
     ]);
 
     let meetingsUsers;
 
-    const meetingData = meetingDataCache ? JSON.parse(meetingDataCache) : await moimModel.getMeetingData({ meetings_id });
-    if (!meetingDataCache) {
-      await setExAsync(`meetingData:${region_code}:${meetings_id}`, 3600 * 24 * 15, JSON.stringify(meetingData));
+    // 모임데이터 캐싱 확인
+    const moimData = moimDataCache.length > 0 ? JSON.parse(moimDataCache) : await moimModel.getMeetingData({ meetings_id });
+
+    // 캐싱 없다면 레디스 추가
+    if (moimDataCache.length < 1) {
+      await pubClient.sadd(`moimData:${meetings_id}`, JSON.stringify(moimData));
     }
 
+    // 모임 데이터 전송
     await pubClient.publish(
       "meetingRoom",
       JSON.stringify({
         room: meetingRoom,
         event: "meetingData",
-        data: meetingData,
+        data: moimData,
       })
     );
 
+    console.log("myMoimListCachemyMoimListCache", myMoimListCache);
+
     const myList = myListCache ? JSON.parse(myListCache) : await moimModel.getMyList({ users_id });
+
+    const ids = await moimModel.getMyMoimIds({ users_id });
+
+    const moimDetails = await getMoimDetails(pubClient, users_id);
 
     if (!myListCache) {
       await setExAsync(`myList:${users_id}`, 3600, JSON.stringify(myList));
@@ -64,7 +76,7 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
 
     const target = myList.find((v) => v.id === meetings_id && v.users_id === users_id);
 
-    console.log("targettarget", target);
+    console.log("targettarget", meetings_id, users_id, target);
 
     const isApplied = target && Object.keys(target).length > 0;
     const isMember = target?.status === 1;
@@ -182,7 +194,8 @@ exports.getMyList = async ({ socket, pubClient, getAsync, setExAsync }, { data }
 
   const myListCache = await getAsync(`myList:${data.user_id}`);
 
-  const myList = myListCache ? JSON.parse(myListCache) : await moimModel.getMyList({ users_id: data.user_id });
+  // const myList = myListCache ? JSON.parse(myListCache) : await moimModel.getMyList({ users_id: data.user_id });
+  const myList = await moimModel.getMyList({ users_id: data.user_id });
 
   if (!myListCache) {
     await setExAsync(`myList:${data.user_id}`, 3600, JSON.stringify(myList));
@@ -199,7 +212,7 @@ exports.getMyList = async ({ socket, pubClient, getAsync, setExAsync }, { data }
 };
 
 // 지역 입장
-exports.handleJoinRegion = async ({ socket, pubClient, getAsync, setExAsync }, { user, region_code }) => {
+exports.handleJoinRegion = async ({ socket, pubClient, getAsync, setExAsync }, { region_code }) => {
   socket.join(region_code);
 
   const meetingListcache = await getAsync(`meetingList:${region_code}`);
@@ -209,22 +222,6 @@ exports.handleJoinRegion = async ({ socket, pubClient, getAsync, setExAsync }, {
   console.log("meetingListcachemeetingListcache", meetingListcache);
 
   if (!meetingListcache) {
-    // const addActiveTimeList = await Promise.all(
-    //   meetingList.map(async (v) => {
-    //     const { id } = v;
-
-    //     const meetingsUserData = await getAsync(`meetingsUsers:${region_code}:${id}`);
-
-    //     const max_active_time_item = JSON.parse(meetingsUserData)
-    //       ?.map((v) => v.last_active_time)
-    //       .sort((a, b) => new Date(b) - new Date(a))[0];
-
-    //     return { ...v, last_active_time: max_active_time_item };
-    //   })
-    // );
-
-    // console.log("addActiveTimeList", addActiveTimeList);
-    // await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(addActiveTimeList));
     await handleActiveTimeMeeting({ meetingList, getAsync, pubClient, setExAsync, region_code });
   } else {
     await pubClient.publish(
@@ -240,11 +237,6 @@ exports.handleJoinRegion = async ({ socket, pubClient, getAsync, setExAsync }, {
 
 // 모임 생성
 exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExAsync }, data) => {
-  console.log("handleGenerateMeetinghandleGenerateMeetinghandleGenerateMeeting", data);
-
-  // 주소 검색
-  // const [existingAddress] = await addressModel.getAddress({ keyword: data.address });
-
   if (data.name.length < 5 || data.name.length > 40 || data.description.length < 20 || data.description.length > 500) {
     io.to(socket.id).emit("error", {
       message: "모임 제목 또는 모임 설명이 조건에 맞지 않습니다.",
@@ -252,29 +244,6 @@ exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExA
     });
     return;
   }
-
-  // let region_code;
-
-  // region_code = await userModel.findByUserAddresses({
-  //   address: data.address,
-  // });
-
-  // console.log("rere", region_code);
-
-  // if (!region_code) {
-  //   // 가장 높은 address_code 가져오기
-  //   const highestCode = await userModel.getHighestAddressCode();
-  //   const newCodeNumber = highestCode ? parseInt(highestCode.replace("RC", ""), 10) + 1 : 1; // 기본값 1
-  //   console.log("highestCode", highestCode);
-  //   console.log("newCodeNumber", newCodeNumber);
-  //   region_code = `RC${String(newCodeNumber).padStart(3, "0")}`; // "RC001" 형식 유지
-  // }
-
-  // await userModel.createUserAddresses({
-  //   user_id: data.users_id,
-  //   address: data.address,
-  //   address_code: region_code,
-  // });
 
   const res = await moimModel.generateMeeting({
     name: data.name,
@@ -290,16 +259,30 @@ exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExA
 
   // 생성 성공
   if (res.affectedRows > 0) {
-    // if (data.onesignal_id) {
-    //   onesignal.handleOnesignalTags();
-    // }
+    const key = `moimList:${data.region_code}`;
 
-    await moimModel.enterMeeting({
+    const meetingData = await moimModel.getMeetingData({ meetings_id: res.insertId });
+
+    console.log("meetingDatameetingDatameetingData", meetingData);
+
+    await pubClient.sadd(key, res.insertId);
+    await pubClient.sadd(`moimData:${data.region_code}:${data.users_id}`, JSON.stringify(meetingData));
+
+    const lists = await pubClient.smembers(key);
+    console.log("lsssss", lists);
+
+    // 만든 사람은 바로 입장 처리
+    const enterRes = await moimModel.enterMeeting({
       users_id: data.users_id,
       meetings_id: res.insertId,
       type: data.type,
       creator: true,
     });
+
+    if (enterRes.CODE === "EM000" && !enterRes.update) {
+      const key = `myMoimList:${data.users_id}`;
+      await pubClient.sadd(key, res.insertId);
+    }
 
     const [updatemyList, updateMeetingList] = await Promise.all([
       moimModel.getMyList({ users_id: data.users_id }),
@@ -332,6 +315,9 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
     console.log("enterRes", enterRes);
 
     if (enterRes.CODE === "EM000") {
+      const key = `myMoimList:${users_id}`;
+      await pubClient.sadd(key, meetings_id);
+
       // if (onesignal_id) {
 
       // const email = await findByUserEmail(users_id);
@@ -405,6 +391,7 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
 
 // 메세지 보내기
 exports.handleSendMessage = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, contents, users_id, reply_id, tag_id }) => {
+  console.log("reply_idreply_id", reply_id, meetings_id);
   const meetingRoom = `${region_code}:${meetings_id}`;
 
   const meetingsUsersCache = await getAsync(`meetingsUsers:${meetingRoom}`);
@@ -598,6 +585,10 @@ exports.handleLeaveMoim = async ({ socket, pubClient, getAsync, setExAsync }, { 
   const meetingsUsers = meetingsUsersCache ? JSON.parse(meetingsUsersCache) : await moimModel.getMeetingsUsers({ meetings_id });
 
   if (res.CODE === "LM000") {
+    const key = `myMoimList:${users_id}`;
+    // await pubClient.sadd(key, meetings_id);
+    await pubClient.srem(key, meetings_id);
+
     const res = await moimModel.sendMessage({
       meetings_id,
       contents: encryptMessage(`${userInfo?.nickname}님이 방을 나갔습니다.`),
