@@ -62,13 +62,7 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
       })
     );
 
-    console.log("myMoimListCachemyMoimListCache", myMoimListCache);
-
     const myList = myListCache ? JSON.parse(myListCache) : await moimModel.getMyList({ users_id });
-
-    const ids = await moimModel.getMyMoimIds({ users_id });
-
-    const moimDetails = await getMoimDetails(pubClient, users_id);
 
     if (!myListCache) {
       await setExAsync(`myList:${users_id}`, 3600, JSON.stringify(myList));
@@ -76,12 +70,9 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
 
     const target = myList.find((v) => v.id === meetings_id && v.users_id === users_id);
 
-    console.log("targettarget", meetings_id, users_id, target);
-
     const isApplied = target && Object.keys(target).length > 0;
     const isMember = target?.status === 1;
 
-    console.log();
     if (isMember) {
       if (fcmToken) {
         fcm.handleSubscribeTopic({ token: fcmToken, topic: meetings_id });
@@ -90,12 +81,6 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
       await moimModel.modifyActiveTime({ meetings_id, users_id });
 
       meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
-
-      // if (onesignal_id) {
-
-      // const email = await findByUserEmail(users_id);
-      // onesignal.handleOnesignalTags({ email, meetings_id, users_id });
-      // }
 
       await setExAsync(`meetingsUsers:${region_code}:${meetings_id}`, 3600, JSON.stringify(meetingsUsers));
 
@@ -155,9 +140,15 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
 
     const messages = messagesCache ? JSON.parse(messagesCache) : await moimModel.getMessages({ meetings_id });
 
-    console.log("messages", messages);
-
     const decryptMessages = handleDecryptMessages(messages.lists);
+
+    const userJoinDate = new Date(meetingsUsers.find((v) => v.users_id === users_id).created_at).getTime();
+
+    console.log(
+      "decryptMessages",
+      meetingsUsers.find((v) => v.users_id === users_id).created_at,
+      decryptMessages.filter((v) => new Date(v.created_at).getTime() <= userJoinDate)
+    );
 
     if (messages.lists.length > 0) {
       await setExAsync(`messages:${region_code}:${meetings_id}`, 3600, JSON.stringify(messages));
@@ -169,7 +160,7 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
         JSON.stringify({
           room: meetingRoom,
           event: "messages",
-          data: { list: decryptMessages, total: messages.total },
+          data: { list: decryptMessages.filter((v) => new Date(v.created_at).getTime() >= userJoinDate), total: messages.total },
         })
       );
     }
@@ -265,11 +256,11 @@ exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExA
 
     console.log("meetingDatameetingDatameetingData", meetingData);
 
-    await pubClient.sadd(key, res.insertId);
-    await pubClient.sadd(`moimData:${data.region_code}:${data.users_id}`, JSON.stringify(meetingData));
+    // await pubClient.sadd(key, res.insertId);
+    // await pubClient.sadd(`moimData:${data.region_code}:${data.users_id}`, JSON.stringify(meetingData));
 
-    const lists = await pubClient.smembers(key);
-    console.log("lsssss", lists);
+    // const lists = await pubClient.smembers(key);
+    // console.log("lsssss", lists);
 
     // 만든 사람은 바로 입장 처리
     const enterRes = await moimModel.enterMeeting({
@@ -279,10 +270,10 @@ exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExA
       creator: true,
     });
 
-    if (enterRes.CODE === "EM000" && !enterRes.update) {
-      const key = `myMoimList:${data.users_id}`;
-      await pubClient.sadd(key, res.insertId);
-    }
+    // if (enterRes.CODE === "EM000" && !enterRes.update) {
+    //   const key = `myMoimList:${data.users_id}`;
+    //   await pubClient.sadd(key, res.insertId);
+    // }
 
     const [updatemyList, updateMeetingList] = await Promise.all([
       moimModel.getMyList({ users_id: data.users_id }),
@@ -290,8 +281,6 @@ exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExA
         region_code: data.region_code,
       }),
     ]);
-
-    console.log("updateMeetingList", updateMeetingList);
 
     await setExAsync(`meetingList:${data.region_code}`, 3600, JSON.stringify(updateMeetingList));
     await setExAsync(`myList:${data.users_id}`, 3600, JSON.stringify(updatemyList));

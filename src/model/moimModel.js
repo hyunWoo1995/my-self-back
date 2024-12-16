@@ -116,10 +116,11 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
     ]);
     return { DATA: rows, CODE: "EM000", update: true };
   } else {
-    const [rows] = await db.query("INSERT INTO meetings_users (meetings_id, users_id, status, last_active_time) VALUES (?, ?, ?, ?)", [
+    const [rows] = await db.query("INSERT INTO meetings_users (meetings_id, users_id, status, last_active_time, created_at) VALUES (?, ?, ?, ?, ?)", [
       meetings_id,
       users_id,
       type === 3 || creator ? 1 : 0,
+      new Date(),
       new Date(),
     ]);
     return { DATA: rows, CODE: "EM000" };
