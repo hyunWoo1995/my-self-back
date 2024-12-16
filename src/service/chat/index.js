@@ -145,7 +145,10 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
 
     const userJoinDate = new Date(meetingsUsers.find((v) => v.users_id === users_id).created_at);
 
-    console.log("decryptMessages", userJoinDate);
+    console.log(
+      "decryptMessages",
+      decryptMessages.filter((v) => moment(v.created_at).isSameOrAfter(userJoinDate))
+    );
 
     if (messages.lists.length > 0) {
       await setExAsync(`messages:${region_code}:${meetings_id}`, 3600, JSON.stringify(messages));
@@ -157,7 +160,7 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
         JSON.stringify({
           room: socket.id,
           event: "messages",
-          data: { list: decryptMessages.filter((v) => moment(v.created_at).isSameOrAfter(userJoinDate)), total: messages.total },
+          data: { list: decryptMessages, total: messages.total },
         })
       );
     }
