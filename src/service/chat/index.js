@@ -33,14 +33,14 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
       })
     );
 
-    const [myListCache, messagesCache, meetingListCache, meetingsUsersCache] = await Promise.all([
+    const [myListCache, messagesCache, meetingListCache, meetingsUsersCache, moimDataCache, myMoimListCache] = await Promise.all([
       getAsync(`myList:${users_id}`),
       getAsync(`messages:${region_code}:${meetings_id}`),
       getAsync(`meetingList:${region_code}`),
       // getAsync(`meetingData:${region_code}:${meetings_id}`),
       getAsync(`meetingsUsers:${region_code}:${meetings_id}`),
-      // smembers(`moimData:${meetings_id}`),
-      // smembers(`myMoimList:${users_id}`),
+      smembers(`moimData:${meetings_id}`),
+      smembers(`myMoimList:${users_id}`),
     ]);
 
     let meetingsUsers;
@@ -297,7 +297,7 @@ exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExA
 };
 
 // 모임 입장 신청
-exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io }, { region_code, users_id, meetings_id, type, fcmToken }) => {
+exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io, smembers }, { region_code, users_id, meetings_id, type, fcmToken }) => {
   try {
     const enterRes = await moimModel.enterMeeting({ meetings_id, users_id, type });
 
@@ -372,7 +372,7 @@ exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io
 
     setExAsync(`myList:${users_id}`, 3600, JSON.stringify(myList));
 
-    await this.handleEnterMeeting({ socket, pubClient, getAsync, setExAsync, io }, { region_code, meetings_id, users_id, type });
+    await this.handleEnterMeeting({ socket, pubClient, getAsync, setExAsync, io, smembers }, { region_code, meetings_id, users_id, type });
   } catch (err) {
     console.error("handleJoinMeeting error", err);
   }
