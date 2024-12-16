@@ -5,6 +5,7 @@ const { decryptMessage, encryptMessage } = require("../../utils/aes");
 const onesignal = require("./onesignal");
 const fcm = require("../../../firebase");
 const { redisClient } = require("../../utils/redis");
+const moment = require("moment");
 
 let typingUsers = [];
 const typingTimers = {}; // To store timers for each user
@@ -142,13 +143,9 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
 
     const decryptMessages = handleDecryptMessages(messages.lists);
 
-    const userJoinDate = new Date(meetingsUsers.find((v) => v.users_id === users_id).created_at).getTime();
+    const userJoinDate = new Date(meetingsUsers.find((v) => v.users_id === users_id).created_at);
 
-    console.log(
-      "decryptMessages",
-      meetingsUsers.find((v) => v.users_id === users_id).created_at,
-      decryptMessages.filter((v) => new Date(v.created_at).getTime() <= userJoinDate)
-    );
+    console.log("decryptMessages", userJoinDate);
 
     if (messages.lists.length > 0) {
       await setExAsync(`messages:${region_code}:${meetings_id}`, 3600, JSON.stringify(messages));
@@ -160,7 +157,7 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
         JSON.stringify({
           room: socket.id,
           event: "messages",
-          data: { list: decryptMessages.filter((v) => new Date(v.created_at).getTime() >= userJoinDate), total: messages.total },
+          data: { list: decryptMessages.filter((v) => moment(v.createdAt).isSameOrAfter(userJoinDate)), total: messages.total },
         })
       );
     }
