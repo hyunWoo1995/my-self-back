@@ -7,6 +7,7 @@ const upload = multer();
 // 카테고리 조회
 router.get("/category", moimController.getCategories);
 router.post("/getMoreMessage", moimController.getMoreMessage);
+router.get("/myMoim/:users_id", moimController.getMyMoim);
 // 라우터 설정
 router.post("/setMoimLogo", upload.single("file"), async (req, res) => {
   try {

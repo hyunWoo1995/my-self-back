@@ -87,3 +87,17 @@ exports.setMoimLogo = async (req, res) => {
     res.sendError("이미지 업로드 실패");
   }
 };
+
+exports.getMyMoim = async (req, res) => {
+  try {
+    const { users_id } = req.params;
+
+    const listRes = await moimModel.getMyList({ users_id });
+
+    console.log("listRes", listRes);
+
+    res.sendSuccess("", listRes);
+  } catch (err) {
+    res.sendError(500, "조회 실패");
+  }
+};
