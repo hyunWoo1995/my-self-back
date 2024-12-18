@@ -160,7 +160,11 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
         JSON.stringify({
           room: socket.id,
           event: "messages",
-          data: { list: decryptMessages.filter((v) => moment(v.created_at).isSameOrAfter(userJoinDate)), total: messages.total },
+          data: {
+            list: decryptMessages.filter((v) => moment(v.created_at).isSameOrAfter(userJoinDate)),
+            total: messages.total,
+            end: Math.ceil(decryptMessages.filter((v) => moment(v.created_at).isSameOrAfter(userJoinDate)).length / 20) < 2,
+          },
         })
       );
     }

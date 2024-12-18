@@ -4,6 +4,7 @@ const redisService = require("../service/chat/redis");
 const { io } = require("../../index");
 const { uploadFile, ensureContainerExists, downloadSasUrl, getBlobMetadata } = require("../utils/azureUtil");
 const sharp = require("sharp");
+const moment = require("moment");
 
 exports.getCategories = async (req, res) => {
   try {
@@ -17,13 +18,27 @@ exports.getCategories = async (req, res) => {
 };
 
 exports.getMoreMessage = async (req, res) => {
-  const { meetings_id, length } = req.body;
+  try {
+    const { meetings_id, length } = req.body;
+    const { userId } = req;
 
-  const result = await moimModel.getMoreMessage({ meetings_id, length });
+    const result = await moimModel.getMoreMessage({ meetings_id, length });
 
-  const decryptMessages = result.map((v) => ({ ...v, contents: decryptMessage(v.contents) }));
+    const meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
 
-  res.status(200).json({ DATA: { list: decryptMessages } });
+    const userJoinDate = new Date(meetingsUsers.find((v) => v.users_id === userId).created_at);
+
+    const decryptMessages = result.map((v) => ({ ...v, contents: decryptMessage(v.contents) }));
+
+    res.status(200).json({
+      DATA: {
+        list: decryptMessages.filter((v) => moment(v.created_at).isSameOrAfter(userJoinDate)),
+        end: Math.ceil(decryptMessages.filter((v) => moment(v.created_at).isSameOrAfter(userJoinDate)).length / 20) < 2,
+      },
+    });
+  } catch (err) {
+    console.error("getMoreMsg error", err);
+  }
 };
 
 exports.handleLikeMeeting = async (req, res) => {

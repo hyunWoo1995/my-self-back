@@ -308,6 +308,9 @@ const authController = {
   // moimmoim 회원로그인
   async login(req, res) {
     const { email, password, fcmToken } = req.body;
+
+    console.log();
+
     try {
       // 1. 사용자가 존재하는지 이메일로 찾기
       const user = await userModel.findByEmail(email);
