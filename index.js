@@ -30,8 +30,8 @@ app.use(responseHelper);
 
 const io = socketIo(server);
 const PORT = process.env.PORT || 80;
-const publicDirectoryPath = path.join(__dirname, "./public");
-
+const publicDirectoryPath = path.join(__dirname, "./src/public");
+console.log("Serving static files from:", publicDirectoryPath);
 app.use(express.static(publicDirectoryPath));
 
 // 소켓 설정 초기화
