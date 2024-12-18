@@ -2,7 +2,7 @@ const moimModel = require("../model/moimModel");
 const { decryptMessage } = require("../utils/aes");
 const redisService = require("../service/chat/redis");
 const { io } = require("../../index");
-const { uploadFile, ensureContainerExists } = require("../utils/azureUtil");
+const { uploadFile, ensureContainerExists, downloadSasUrl, getBlobMetadata } = require("../utils/azureUtil");
 const sharp = require("sharp");
 
 exports.getCategories = async (req, res) => {
@@ -69,8 +69,17 @@ exports.setMoimLogo = async (req, res) => {
       .jpeg({ quality: 80 }) // JPEG 형식, 80% 품질
       .toBuffer();
 
+    console.log("optimizedBuffer", optimizedBuffer);
+
+    // blob meta 데이터 조회
+
     // 파일 업로드
     const uploadRes = await uploadFile(containerName, optimizedBuffer, req.file.originalname);
+    const blobMetaData = await getBlobMetadata(containerName, uploadRes.blobName);
+
+    console.log("blobMetaData", blobMetaData.clientRequestId);
+
+    // const sasUrl = downloadSasUrl(containerName, uploadRes.blobName);
 
     // DB 업데이트
     const editRes = await moimModel.editMeeting({ meetings_id, logo: uploadRes.url });
@@ -80,7 +89,7 @@ exports.setMoimLogo = async (req, res) => {
     if (editRes.affectedRows > 0) {
       res.sendSuccess("성공");
     } else {
-      res.sendError("실패");
+      res.sendError(500, "실패");
     }
   } catch (error) {
     console.error(error);

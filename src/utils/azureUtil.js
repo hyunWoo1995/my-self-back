@@ -74,6 +74,22 @@ function downloadSasUrl(containerName, blobName, expiryHours = 1) {
   }
 }
 
+async function getBlobMetadata(containerName, blobName) {
+  try {
+    // Blob 클라이언트 생성
+    const blobClient = blobServiceClient.getContainerClient(containerName).getBlobClient(blobName);
+
+    // Blob 메타데이터 조회
+    const properties = await blobClient.getProperties();
+    console.log("Blob Properties:", properties);
+
+    return properties;
+  } catch (error) {
+    console.error("Error retrieving Blob metadata:", error.message);
+    return null;
+  }
+}
+
 async function ensureContainerExists(containerName) {
   const containerClient = blobServiceClient.getContainerClient(containerName);
 
@@ -114,4 +130,5 @@ module.exports = {
   downloadSasUrl,
   ensureContainerExists,
   setPublicAccess,
+  getBlobMetadata,
 };

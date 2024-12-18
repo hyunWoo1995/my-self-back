@@ -275,6 +275,11 @@ const authController = {
               user_id: userId,
               address_id: item.id || createAddressRes,
             });
+          } else {
+            return userModel.createUserAddress({
+              user_id: userId,
+              address_id: item.id,
+            });
           }
         })
       );

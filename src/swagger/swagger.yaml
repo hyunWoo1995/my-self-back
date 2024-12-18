@@ -145,7 +145,7 @@ paths:
       responses:
         200:
           description: 모임 카테고리
-  /moim/myMoim:
+  /moim/myMoim/{users_id}:
     get:
       tags:
         - moim

@@ -83,46 +83,47 @@ const User = {
   // 회원정보 가져오기
   async findByUser(id) {
     let query = `
-                          SELECT 
-        u.id AS user_id,
-        u.nickname,
-        u.email,
-        u.nickname,
-        u.birthdate,
-        u.gender,
-        u.provider,
-        u.like,
-        u.profile_image_name,
-        -- 주소 목록 서브쿼리로 생성
-        (
-            SELECT JSON_ARRAYAGG(
-                      JSON_OBJECT(
-                          'id', a.id,
-                          'address', a.address,
-                          'address_code', a.address_code,
-                          'region_1depth_name', a.region_1depth_name,
-                          'region_2depth_name', a.region_2depth_name,
-                          'region_3depth_name', a.region_3depth_name
-                      )
+SELECT 
+    u.id AS user_id,
+    u.nickname,
+    u.email,
+    u.birthdate,
+    u.gender,
+    u.provider,
+    u.like,
+    u.profile_image_name,
+    -- 주소 목록 서브쿼리로 생성 (중복 제거)
+    (
+        SELECT JSON_ARRAYAGG(
+                  JSON_OBJECT(
+                      'address', distinct_addresses.address,
+                      'address_code', distinct_addresses.address_code,
+                      'region_1depth_name', distinct_addresses.region_1depth_name,
+                      'region_2depth_name', distinct_addresses.region_2depth_name,
+                      'region_3depth_name', distinct_addresses.region_3depth_name
                   )
+              )
+        FROM (
+            SELECT DISTINCT a.address, a.address_code, a.region_1depth_name, a.region_2depth_name, a.region_3depth_name
             FROM address a
-            where ua.user_id = u.id
-        ) AS addresses,
-          -- 관심사 목록 서브쿼리로 생성
-        (
-            SELECT JSON_ARRAYAGG(
-                      JSON_OBJECT(
-                          'interest_id', ui.interest_id,
-                          'interest_name', c.interest
-                      )
+            JOIN user_address ua ON ua.address_id = a.id
+            WHERE ua.user_id = u.id
+        ) AS distinct_addresses
+    ) AS addresses,
+    -- 관심사 목록 서브쿼리로 생성
+    (
+        SELECT JSON_ARRAYAGG(
+                  JSON_OBJECT(
+                      'interest_id', ui.interest_id,
+                      'interest_name', c.interest
                   )
-            FROM user_interests ui
-            LEFT JOIN category c ON ui.interest_id = c.id
-            WHERE ui.user_id = u.id
-        ) AS interests
-    FROM users u
-    join user_address ua on ua.user_id = u.id
-    WHERE u.id = ?;
+              )
+        FROM user_interests ui
+        LEFT JOIN category c ON ui.interest_id = c.id
+        WHERE ui.user_id = u.id
+    ) AS interests
+FROM users u
+WHERE u.id = ?;
     `;
     const queryParams = [id];
     try {
