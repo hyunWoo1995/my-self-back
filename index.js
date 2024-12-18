@@ -58,7 +58,7 @@ app.use(
 app.use((req, res, next) => {
   // 제외할 경로 리스트
   const excludedPaths = ["/"];
-  const excludedPrefixes = ["/auth", "/public"]; // auth로 시작하는 경로 전체
+  const excludedPrefixes = ["/auth", "/assets"]; // auth로 시작하는 경로 전체
   console.log("req.path", req.path);
 
   const isExcludedPath = excludedPaths.includes(req.path);
