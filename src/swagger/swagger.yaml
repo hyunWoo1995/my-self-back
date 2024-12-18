@@ -192,6 +192,34 @@ paths:
           schema:
             type: string
             example: "태평동"
+  /address/createAddress:
+    post:
+      tags:
+        - address
+      summary: 주소 추가 및 수정
+      description: 주소 추가 및 수정하기
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address_name:
+                  type: string
+                  example: "시 구 동"
+                region_1depth_name:
+                  type: string
+                  example: "시"
+                region_2depth_name:
+                  type: string
+                  example: "구"
+                region_3depth_name:
+                  type: string
+                  example: "동"
+                prev_address_id:
+                  type: int
+                  example: 1
 #스키마 설정
 components:
   securitySchemes:

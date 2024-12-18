@@ -31,17 +31,33 @@ const User = {
     return result.insertId;
   },
 
-  async createUserAddresses(params) {
-    console.log("ppsdfpsdpfp", params);
+  async createUserAddress(params) {
+    try {
+      const user_id = params.user_id;
+      const address_id = params.address_id;
+      const prev_address_id = params.prev_address_id;
 
-    const user_id = params.user_id;
-    const address_id = params.address_id;
-    const [result] = await db.query(
-      `INSERT INTO user_address (user_id, address_id) 
-      VALUES (?, ?)`,
-      [user_id, address_id]
-    );
-    return result.insertId;
+      const [exsistingData] = await db.query("select * from user_address where address_id = ? and user_id = ?", [address_id, user_id]);
+
+      if (exsistingData.length > 0) {
+        throw new Error("이미 존재하는 데이터입니다.");
+      }
+
+      const query = prev_address_id
+        ? `update user_address set address_id = ? where address_id = ? and user_id = ?`
+        : `INSERT INTO user_address (user_id, address_id) 
+      VALUES (?, ?)`;
+
+      if (prev_address_id) {
+        const [result] = await db.query(query, [address_id, prev_address_id, user_id]);
+        return result.insertId;
+      } else {
+        const [result] = await db.query(query, [user_id, address_id]);
+        return result.insertId;
+      }
+    } catch (err) {
+      console.error("err", err);
+    }
   },
 
   // 이메일로 사용자 찾기
@@ -81,6 +97,7 @@ const User = {
         (
             SELECT JSON_ARRAYAGG(
                       JSON_OBJECT(
+                          'id', a.id,
                           'address', a.address,
                           'address_code', a.address_code,
                           'region_1depth_name', a.region_1depth_name,
@@ -89,7 +106,7 @@ const User = {
                       )
                   )
             FROM address a
-            where ua.address_id = a.id
+            where ua.user_id = u.id
         ) AS addresses,
           -- 관심사 목록 서브쿼리로 생성
         (
@@ -129,18 +146,18 @@ const User = {
     return nickname;
   },
 
-  // 회원 주소정보 가져오기
-  async findByUserAddresses(params) {
-    const user_id = params.user_id || null;
+  // 주소정보 가져오기
+  async findAddress(params) {
+    // const user_id = params.user_id || null;
     const address = params.address || null;
 
     let query = "SELECT address, address_code FROM address WHERE 1";
     const queryParams = [];
 
-    if (user_id !== null) {
-      query += " AND user_id = ?";
-      queryParams.push(user_id);
-    }
+    // if (user_id !== null) {
+    //   query += " AND user_id = ?";
+    //   queryParams.push(user_id);
+    // }
     if (address !== null) {
       query += " AND address = ?";
       queryParams.push(address);

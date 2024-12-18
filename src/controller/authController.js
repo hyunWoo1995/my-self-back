@@ -247,7 +247,7 @@ const authController = {
         // 지역코드 (RC0001~999) 있는지 없는지 체크후 있으면 등록 없으면 +1해서 등록.
         addresses.map(async (item) => {
           // let rcCode = "RC001"; // 기본값
-          let rcCode = await userModel.findByUserAddresses({
+          let rcCode = await addressModel.findAddress({
             address: item.address,
           });
           console.log("rcCode111", rcCode);
@@ -271,7 +271,7 @@ const authController = {
             console.log("createAddressRescreateAddressRes", createAddressRes);
 
             // 유저 - 주소 추가
-            return userModel.createUserAddresses({
+            return userModel.createUserAddress({
               user_id: userId,
               address_id: item.id || createAddressRes,
             });
