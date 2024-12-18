@@ -78,6 +78,10 @@ module.exports = async (io) => {
 
     socket.on("leaveMoim", ({ users_id, meetings_id, region_code }) => socketService.handleLeaveMoim({ socket, pubClient, getAsync, setExAsync }, { users_id, meetings_id, region_code }));
 
+    socket.on("generateInviteCode", ({ users_id, meetings_id, region_code }) =>
+      socketService.handleGenerateInviteCode({ socket, getAsync, pubClient, setExAsync }, { meetings_id, region_code, users_id })
+    );
+
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)
     socket.on("disconnect", (e) => console.log("disconnect", e));
   });

@@ -640,6 +640,27 @@ exports.handleLeaveMoim = async ({ socket, pubClient, getAsync, setExAsync }, { 
   setExAsync(`myList:${users_id}`, 3600, JSON.stringify(myList));
 };
 
+// 초대코드 생성
+exports.handleGenerateInviteCode = async ({ socket, pubClient, getAsync, setExAsync }, { users_id, region_code, meetings_id }) => {
+  const inviteCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+  setExAsync(`inviteCode:${meetings_id}`, 120, JSON.stringify({ meetings_id, users_id, region_code }));
+
+  pubClient.publish("message", JSON.stringify({ room: socket.id, event: "inviteCode", data: { meetings_id, users_id, region_code, invite_code: inviteCode } }));
+};
+
+// 초대 수락
+exports.handleAcceptInvite = async ({ socket, pubClient, getAsync, setExAsync }, { users_id, region_code, meetings_id, invite_code }) => {
+  const redisInviteCode = await getAsync(`inviteCode:${meetings_id}`);
+
+  if (redisInviteCode !== invite_code) {
+    pubClient.publish("message", JSON.stringify({ room: socket.id, event: "invite", data: { CODE: "AI001", message: "초대코드가 일치하지 않습니다." } }));
+  } else {
+    // moimModel.enterMeeting({meetings_id, users_id})
+    // 입장 처리
+  }
+};
+
 const handleDecryptMessages = (data) => {
   console.log("data", data);
   return data.map((v) => {

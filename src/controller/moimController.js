@@ -71,44 +71,60 @@ exports.handleLikeMeeting = async (req, res) => {
 
 exports.setMoimLogo = async (req, res) => {
   console.log(req.file, req.body.meetings_id);
-  const { meetings_id } = req.body;
+  const {
+    file,
+    body: { meetings_id },
+  } = req;
 
-  const containerName = `moimlogo-${meetings_id}`;
+  // 애저를 이용한 업로드
+  // const containerName = `moimlogo-${meetings_id}`;
 
-  await ensureContainerExists(containerName);
+  // await ensureContainerExists(containerName);
 
+  // try {
+  //   // 이미지 최적화
+  //   const optimizedBuffer = await sharp(req.file.buffer)
+  //     .resize(500, 500, { fit: "inside" }) // 최대 500x500 크기로 조정
+  //     .jpeg({ quality: 80 }) // JPEG 형식, 80% 품질
+  //     .toBuffer();
+
+  //   console.log("optimizedBuffer", optimizedBuffer);
+
+  //   // blob meta 데이터 조회
+
+  //   // 파일 업로드
+  //   const uploadRes = await uploadFile(containerName, optimizedBuffer, req.file.originalname);
+  //   const blobMetaData = await getBlobMetadata(containerName, uploadRes.blobName);
+
+  //   console.log("blobMetaData", blobMetaData.clientRequestId);
+
+  //   // const sasUrl = downloadSasUrl(containerName, uploadRes.blobName);
+
+  //   // DB 업데이트
+  //   const editRes = await moimModel.editMeeting({ meetings_id, logo: uploadRes.url });
+
+  //   console.log("editRes", editRes);
+
+  //   if (editRes.affectedRows > 0) {
+  //     res.sendSuccess("성공");
+  //   } else {
+  //     res.sendError(500, "실패");
+  //   }
+  // } catch (error) {
+  //   console.error(error);
+  //   res.sendError("이미지 업로드 실패");
+  // }
+
+  // 서버 자체 업로드
+
+  console.log("ffff", file, file?.filename);
   try {
-    // 이미지 최적화
-    const optimizedBuffer = await sharp(req.file.buffer)
-      .resize(500, 500, { fit: "inside" }) // 최대 500x500 크기로 조정
-      .jpeg({ quality: 80 }) // JPEG 형식, 80% 품질
-      .toBuffer();
+    const editRes = await moimModel.editMeeting({ meetings_id, logo: file ? file.filename : "" });
 
-    console.log("optimizedBuffer", optimizedBuffer);
-
-    // blob meta 데이터 조회
-
-    // 파일 업로드
-    const uploadRes = await uploadFile(containerName, optimizedBuffer, req.file.originalname);
-    const blobMetaData = await getBlobMetadata(containerName, uploadRes.blobName);
-
-    console.log("blobMetaData", blobMetaData.clientRequestId);
-
-    // const sasUrl = downloadSasUrl(containerName, uploadRes.blobName);
-
-    // DB 업데이트
-    const editRes = await moimModel.editMeeting({ meetings_id, logo: uploadRes.url });
-
-    console.log("editRes", editRes);
-
-    if (editRes.affectedRows > 0) {
-      res.sendSuccess("성공");
-    } else {
-      res.sendError(500, "실패");
-    }
+    res.sendSuccess("모임 수정 성공", { CODE: "EM000" });
   } catch (error) {
     console.error(error);
-    res.sendError("이미지 업로드 실패");
+    res.sendError("모임 수정 실패");
   }
 };
 
