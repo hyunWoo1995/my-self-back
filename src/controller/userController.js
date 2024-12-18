@@ -7,19 +7,19 @@ dotenv.config(); // .env가져오기
 
 const userController = {
   async getUserMyInfo(req, res) {
+    console.log("req", req.body);
     const { userId } = req;
+    console.log("userId", userId);
     try {
       const userInfo = await userModel.findByUser(userId);
+      console.log("userInfo", userInfo);
       if (!userInfo) {
         return res.sendError(404, "사용자 정보를 찾을 수 없습니다.");
       }
 
       const containerName = "profile";
       // SAS URL 생성
-      const sasUrl = azureUtil.downloadSasUrl(
-        containerName,
-        userInfo.profile_image_name
-      );
+      const sasUrl = azureUtil.downloadSasUrl(containerName, userInfo.profile_image_name);
       userInfo.profile_image_url = sasUrl;
       return res.sendSuccess("User info", userInfo);
     } catch (err) {

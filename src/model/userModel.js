@@ -67,7 +67,7 @@ const User = {
   // 회원정보 가져오기
   async findByUser(id) {
     let query = `
-      SELECT 
+                          SELECT 
         u.id AS user_id,
         u.nickname,
         u.email,
@@ -81,15 +81,15 @@ const User = {
         (
             SELECT JSON_ARRAYAGG(
                       JSON_OBJECT(
-                          'address', ua.address,
-                          'address_code', ua.address_code,
-                          'region_1depth_name', ua.region_1depth_name,
-                          'region_2depth_name', ua.region_2depth_name,
-                          'region_3depth_name', ua.region_3depth_name
+                          'address', a.address,
+                          'address_code', a.address_code,
+                          'region_1depth_name', a.region_1depth_name,
+                          'region_2depth_name', a.region_2depth_name,
+                          'region_3depth_name', a.region_3depth_name
                       )
                   )
-            FROM address ua
-            WHERE ua.user_id = u.id
+            FROM address a
+            where ua.address_id = a.id
         ) AS addresses,
           -- 관심사 목록 서브쿼리로 생성
         (
@@ -104,12 +104,17 @@ const User = {
             WHERE ui.user_id = u.id
         ) AS interests
     FROM users u
+    join user_address ua on ua.user_id = u.id
     WHERE u.id = ?;
     `;
     const queryParams = [id];
-    const [rows] = await db.query(query, queryParams);
+    try {
+      const [rows] = await db.query(query, queryParams);
+      return rows[0];
+    } catch (err) {
+      console.error("errr", err);
+    }
     // const [rows] = await db.query("SELECT * FROM users WHERE id = ?", [id]);
-    return rows[0];
   },
 
   // 이메일 가져오기
