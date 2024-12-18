@@ -59,7 +59,7 @@ exports.getMyList = async ({ users_id }) => {
   // const [rows] = await db.query("select * from meetings_users where users_id = ?", [users_id]);
 
   const [rows] = await db.query(
-    "select m.*, mu.users_id, mu.status, mu.last_active_time, c.name as category1_name, c2.name as category2_name, max(ua.address) as address, count(mu.users_id) as userCount, (select count(id) from like_history where receiver_id = m.id and status = 'active') as likeCount from meetings_users mu join meetings m on mu.meetings_id = m.id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id LEFT JOIN (SELECT address_code, MAX(address) AS address FROM user_addresses GROUP BY address_code) ua ON ua.address_code = m.region_code where users_id = ? group by mu.meetings_id",
+    "select m.*, mu.users_id, mu.status, mu.last_active_time, c.name as category1_name, c2.name as category2_name, max(ua.address) as address, count(mu.users_id) as userCount, (select count(id) from like_history where receiver_id = m.id and status = 'active') as likeCount from meetings_users mu join meetings m on mu.meetings_id = m.id join category c on m.category1 = c.id join category c2 on m.category2 = c2.id LEFT JOIN (SELECT address_code, MAX(address) AS address FROM address GROUP BY address_code) ua ON ua.address_code = m.region_code where users_id = ? group by mu.meetings_id",
     [users_id]
   );
 

@@ -8,6 +8,7 @@ const mailSand = require("../utils/nodemailer");
 const azureUtil = require("../utils/azureUtil");
 const dotenv = require("dotenv");
 const { handleUnSubscribeTopic, subscribeUserToTopic } = require("../../firebase");
+const addressModel = require("../model/addressModel");
 dotenv.config(); // .env가져오기
 
 const getAuthUrl = (provider) => {
@@ -257,16 +258,24 @@ const authController = {
             console.log("highestCode", highestCode);
             console.log("newCodeNumber", newCodeNumber);
             rcCode = `RC${String(newCodeNumber).padStart(3, "0")}`; // "RC001" 형식 유지
+
+            // 주소 생성
+            const createAddressRes = await addressModel.createAddress({
+              address: item.address,
+              address_code: rcCode,
+              region_1depth_name: item.region_1depth_name,
+              region_2depth_name: item.region_2depth_name,
+              region_3depth_name: item.region_3depth_name,
+            });
+
+            console.log("createAddressRescreateAddressRes", createAddressRes);
+
+            // 유저 - 주소 추가
+            return userModel.createUserAddresses({
+              user_id: userId,
+              address_id: item.id || createAddressRes,
+            });
           }
-          console.log("rcCode22", rcCode);
-          return userModel.createUserAddresses({
-            user_id: userId,
-            address: item.address,
-            address_code: rcCode,
-            region_1depth_name: item.region_1depth_name,
-            region_2depth_name: item.region_2depth_name,
-            region_3depth_name: item.region_3depth_name,
-          });
         })
       );
 

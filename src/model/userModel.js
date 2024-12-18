@@ -30,18 +30,16 @@ const User = {
     );
     return result.insertId;
   },
+
   async createUserAddresses(params) {
+    console.log("ppsdfpsdpfp", params);
+
     const user_id = params.user_id;
-    const address = params.address;
-    const address_code = params.address_code;
-    const region_1depth_name = params.region_1depth_name;
-    const region_2depth_name = params.region_2depth_name;
-    const region_3depth_name = params.region_3depth_name;
-    console.log("params", params);
+    const address_id = params.address_id;
     const [result] = await db.query(
-      `INSERT INTO user_addresses (user_id, address, address_code,region_1depth_name,region_2depth_name,region_3depth_name) 
-      VALUES (?, ?, ?, ?, ?, ?)`,
-      [user_id, address, address_code, region_1depth_name, region_2depth_name, region_3depth_name]
+      `INSERT INTO user_address (user_id, address_id) 
+      VALUES (?, ?)`,
+      [user_id, address_id]
     );
     return result.insertId;
   },
@@ -90,7 +88,7 @@ const User = {
                           'region_3depth_name', ua.region_3depth_name
                       )
                   )
-            FROM user_addresses ua
+            FROM address ua
             WHERE ua.user_id = u.id
         ) AS addresses,
           -- 관심사 목록 서브쿼리로 생성
@@ -131,7 +129,7 @@ const User = {
     const user_id = params.user_id || null;
     const address = params.address || null;
 
-    let query = "SELECT address, address_code FROM user_addresses WHERE 1";
+    let query = "SELECT address, address_code FROM address WHERE 1";
     const queryParams = [];
 
     if (user_id !== null) {
@@ -148,7 +146,7 @@ const User = {
   },
   // 가장 높은 address_code 가져오기
   async getHighestAddressCode() {
-    const [rows] = await db.query("SELECT MAX(address_code) AS max_code FROM user_addresses");
+    const [rows] = await db.query("SELECT MAX(address_code) AS max_code FROM address");
     return rows[0]?.max_code || null;
   },
 };
