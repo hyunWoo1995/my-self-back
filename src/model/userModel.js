@@ -96,6 +96,7 @@ SELECT
     (
         SELECT JSON_ARRAYAGG(
                   JSON_OBJECT(
+                      'id', distinct_addresses.id,
                       'address', distinct_addresses.address,
                       'address_code', distinct_addresses.address_code,
                       'region_1depth_name', distinct_addresses.region_1depth_name,
@@ -104,7 +105,7 @@ SELECT
                   )
               )
         FROM (
-            SELECT DISTINCT a.address, a.address_code, a.region_1depth_name, a.region_2depth_name, a.region_3depth_name
+            SELECT DISTINCT a.id, a.address, a.address_code, a.region_1depth_name, a.region_2depth_name, a.region_3depth_name
             FROM address a
             JOIN user_address ua ON ua.address_id = a.id
             WHERE ua.user_id = u.id

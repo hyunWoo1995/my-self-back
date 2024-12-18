@@ -247,11 +247,11 @@ const authController = {
         // 지역코드 (RC0001~999) 있는지 없는지 체크후 있으면 등록 없으면 +1해서 등록.
         addresses.map(async (item) => {
           // let rcCode = "RC001"; // 기본값
-          let rcCode = await addressModel.findAddress({
+          let findAddressRes = await addressModel.findAddress({
             address: item.address,
           });
-          console.log("rcCode111", rcCode);
-          if (!rcCode) {
+          console.log("rcCode111", findAddressRes.address_code, findAddressRes);
+          if (!findAddressRes.address_code) {
             // 가장 높은 address_code 가져오기
             const highestCode = await userModel.getHighestAddressCode();
             const newCodeNumber = highestCode ? parseInt(highestCode.replace("RC", ""), 10) + 1 : 1; // 기본값 1
@@ -262,7 +262,7 @@ const authController = {
             // 주소 생성
             const createAddressRes = await addressModel.createAddress({
               address: item.address,
-              address_code: rcCode,
+              address_code: findAddressRes.address_code,
               region_1depth_name: item.region_1depth_name,
               region_2depth_name: item.region_2depth_name,
               region_3depth_name: item.region_3depth_name,
@@ -273,12 +273,12 @@ const authController = {
             // 유저 - 주소 추가
             return userModel.createUserAddress({
               user_id: userId,
-              address_id: item.id || createAddressRes,
+              address_id: createAddressRes,
             });
           } else {
             return userModel.createUserAddress({
               user_id: userId,
-              address_id: item.id,
+              address_id: findAddressRes.id,
             });
           }
         })
