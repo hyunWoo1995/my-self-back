@@ -3,6 +3,7 @@ const { redisClient, getRedisData } = require("../utils/redis");
 const azureUtil = require("../utils/azureUtil");
 const userModel = require("../model/userModel");
 const dotenv = require("dotenv");
+const moimModel = require("../model/moimModel");
 dotenv.config(); // .env가져오기
 
 const userController = {
@@ -27,6 +28,23 @@ const userController = {
     const { id } = req.query;
     console.log("id", id);
     res.json({ message: "User list1" });
+  },
+
+  async handleLikeUser(req, res) {
+    try {
+      const { receiver_id } = req.params;
+      const { sender_id } = req.body;
+
+      const likeRes = await userModel.handleLikeUser({ receiver_id, sender_id });
+
+      if (likeRes.affectedRows > 0) {
+        res.sendSuccess(200, "수정 성공");
+      } else {
+        res.sendError(500, "수정 실패");
+      }
+    } catch (err) {
+      res.sendError(500, err);
+    }
   },
 };
 

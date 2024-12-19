@@ -173,6 +173,25 @@ WHERE u.id = ?;
     const [rows] = await db.query("SELECT MAX(address_code) AS max_code FROM address");
     return rows[0]?.max_code || null;
   },
+
+  async handleLikeUser({ receiver_id, sender_id }) {
+    const [existingData] = await db.query("select * from like_history where receiver_id = ? and sender_id = ?", [receiver_id, sender_id]);
+
+    if (existingData.length > 0) {
+      const [rows] = await db.query("update like_history set status = ?, updated_at = ? where receiver_id = ? and sender_id = ?", [
+        existingData[0].status === "active" ? "inactive" : "active",
+        new Date(),
+        receiver_id,
+        sender_id,
+      ]);
+
+      return rows;
+    } else {
+      const [rows] = await db.query("insert into like_history (type, sender_id, receiver_id, status, created_at) values (?,?,?,?,?)", ["user", sender_id, receiver_id, "active", new Date()]);
+
+      return rows;
+    }
+  },
 };
 
 module.exports = User;

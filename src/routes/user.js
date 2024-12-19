@@ -13,5 +13,6 @@ router.post("/", (req, res) => {
 });
 
 router.get("/myInfo", userController.getUserMyInfo);
+router.post("/like/:receiver_id", userController.handleLikeUser);
 
 module.exports = router;
