@@ -310,7 +310,7 @@ exports.handleInviteUser = async ({ users_id, meetings_id, receiver_id }) => {
 };
 
 // 초대 응답
-exports.handleInviteAction = async ({ receiver_id, sender_id, code, meetings_id }) => {
+exports.handleInviteReply = async ({ receiver_id, sender_id, code, meetings_id }) => {
   try {
     const [rows] = await db.query("update invite set invite = ? where sender_id = ? and meetings_id = ? and receiver_id = ?", [code, sender_id, meetings_id, receiver_id]);
 
@@ -325,9 +325,20 @@ exports.handleInviteAction = async ({ receiver_id, sender_id, code, meetings_id 
 };
 
 // 초대 리스트 조회
-exports.getInviteList = async ({ users_id, meetings_id }) => {
+exports.getInviteList = async ({ users_id }) => {
   try {
-    const [rows] = await db.query("select * from invite where receiver_id = ? and meetings_id = ?", [users_id, meetings_id]);
+    const [rows] = await db.query("select * from invite where receiver_id = ?", [users_id]);
+
+    return rows;
+  } catch (err) {
+    throw new Error(err);
+  }
+};
+
+// 초대 리스트 조회
+exports.getInviteListByMeetingsId = async ({ reveiver_id, meetings_id, sender_id }) => {
+  try {
+    const [rows] = await db.query("select * from invite where receiver_id = ? and meetings_id=? and sender_id = ?", [reveiver_id, meetings_id, sender_id]);
 
     return rows;
   } catch (err) {

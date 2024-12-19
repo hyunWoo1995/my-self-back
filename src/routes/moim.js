@@ -34,7 +34,7 @@ const upload = multer({ storage: storageEngine, limits: { fileSize: 5 * 1024 * 1
 router.get("/category", moimController.getCategories);
 router.post("/getMoreMessage", moimController.getMoreMessage);
 router.get("/myMoim/:users_id", moimController.getMyMoim);
-router.get("/inviteList/:users_id/:meetings_id", moimController.getInviteList);
+router.get("/inviteList/:users_id", moimController.getInviteList);
 
 router.post("/setMoimLogo", upload, async (req, res) => {
   try {

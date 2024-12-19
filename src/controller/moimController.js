@@ -145,11 +145,11 @@ exports.getMyMoim = async (req, res) => {
 // 초대 목록
 exports.getInviteList = async (req, res) => {
   try {
-    const { users_id, meetings_id } = req.params;
+    const { users_id } = req.params;
 
-    const listRes = await moimModel.getInviteList({ users_id, meetings_id });
+    const listRes = await moimModel.getInviteList({ users_id });
 
-    res.sendSuccess("모임 조회", listRes);
+    res.sendSuccess("초대 조회", listRes);
   } catch (err) {
     res.sendError("초대 목록 조회 실패");
   }
