@@ -285,8 +285,8 @@ paths:
             schema:
               type: object
               properties:
-                name:
-                  type: sender_id
+                sender_id:
+                  type: number
                   example: 1
 
   /address/search:
