@@ -345,3 +345,15 @@ exports.getInviteListByMeetingsId = async ({ reveiver_id, meetings_id, sender_id
     throw new Error(err);
   }
 };
+
+// 찜한 모임 조회
+exports.getLikeMoimList = async ({ users_id }) => {
+  try {
+    const [rows] = await db.query("select * from like_history where sender_id = ? and type = ? and status = ?", [users_id, "meeting", "active"]);
+
+    return rows;
+  } catch (err) {
+    console.error("err");
+    throw new Error("getLikeMoimList error");
+  }
+};

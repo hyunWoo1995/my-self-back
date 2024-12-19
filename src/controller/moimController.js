@@ -154,3 +154,16 @@ exports.getInviteList = async (req, res) => {
     res.sendError("초대 목록 조회 실패");
   }
 };
+
+// 찜한 모임 조회
+exports.getLikeMoimList = async (req, res) => {
+  try {
+    const { users_id } = req.params;
+
+    const listRes = await moimModel.getLikeMoimList({ users_id });
+
+    res.sendSuccess("찜한 모임 조회 성공", listRes);
+  } catch (err) {
+    res.sendError(err);
+  }
+};

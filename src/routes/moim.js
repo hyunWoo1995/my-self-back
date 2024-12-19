@@ -35,6 +35,7 @@ router.get("/category", moimController.getCategories);
 router.post("/getMoreMessage", moimController.getMoreMessage);
 router.get("/myMoim/:users_id", moimController.getMyMoim);
 router.get("/inviteList/:users_id", moimController.getInviteList);
+router.get("/like/:users_id", moimController.getLikeMoimList);
 
 router.post("/setMoimLogo", upload, async (req, res) => {
   try {

@@ -186,7 +186,7 @@ paths:
         500:
           description: 서버 에러
 
-  /moim/inviteList/{users_id}/{meetings_id}:
+  /moim/inviteList/{users_id}:
     get:
       tags:
         - moim
@@ -199,7 +199,14 @@ paths:
           schema:
             type: int
             example: 1
-        - name: meetings_id
+  /moim/like/{users_id}:
+    get:
+      tags:
+        - moim
+      summary: 찜한 모임 조회
+      description: 나의 찜한 모임 목록을 조회한다.
+      parameters:
+        - name: users_id
           in: query
           required: true
           schema:
