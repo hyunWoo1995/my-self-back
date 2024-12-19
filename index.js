@@ -83,6 +83,16 @@ app.use("/address", addressRouter);
 app.use("/user", userRouter);
 app.use("/moim", moimRouter);
 
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Server Error !!";
+
+  res.status(statusCode).json({
+    success: false,
+    message,
+  });
+});
+
 // 기본 라우트
 app.get("/", (req, res) => {
   res.send("Hello, JWT!");
