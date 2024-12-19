@@ -26,7 +26,7 @@ exports.getMoreMessage = async (req, res) => {
 
     const meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
 
-    const userJoinDate = new Date(meetingsUsers.find((v) => v.users_id === userId).created_at);
+    const userJoinDate = new Date(meetingsUsers.find((v) => v.users_id === userId).updated_at) || new Date(meetingsUsers.find((v) => v.users_id === userId).created_at);
 
     const decryptMessages = result.map((v) => ({ ...v, contents: decryptMessage(v.contents) }));
 

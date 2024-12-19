@@ -226,7 +226,7 @@ exports.getMeetingData = async ({ meetings_id }) => {
   console.log("meee", meetings_id);
 
   const [rows] = await db.query(
-    "SELECT m.*, u.nickname AS creator_name, c.name AS category1_name, c2.name AS category2_name, COUNT(mu.id) AS userCount, (select count(id) from like_history where receiver_id = ? and status = 'active') as likeCount FROM meetings m JOIN users u ON m.creator_id = u.id JOIN category c ON m.category1 = c.id JOIN category c2 ON m.category2 = c2.id LEFT JOIN meetings_users mu ON mu.meetings_id = m.id AND mu.status = 1 WHERE m.id = ? GROUP BY m.id;",
+    "SELECT m.*, a.address,u.nickname AS creator_name,c.name AS category1_name,c2.name AS category2_name,(SELECT COUNT(mu.id) FROM meetings_users mu WHERE mu.meetings_id = m.id AND mu.status = 1) AS userCount,(SELECT COUNT(id) FROM like_history WHERE receiver_id = ? AND status = 'active') AS likeCount FROM meetings m JOIN users u ON m.creator_id = u.id JOIN category c ON m.category1 = c.id JOIN category c2 ON m.category2 = c2.id LEFT JOIN address a ON a.address_code = m.region_code WHERE m.id = ?;",
     [meetings_id, meetings_id]
   );
 

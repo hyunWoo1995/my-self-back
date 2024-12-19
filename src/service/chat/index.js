@@ -143,7 +143,7 @@ exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, i
 
     const decryptMessages = handleDecryptMessages(messages.lists);
 
-    const userJoinDate = new Date(meetingsUsers.find((v) => v.users_id === users_id).created_at);
+    const userJoinDate = new Date(meetingsUsers.find((v) => v.users_id === users_id).updated_at) || new Date(meetingsUsers.find((v) => v.users_id === users_id).created_at);
 
     console.log(
       "decryptMessages",
