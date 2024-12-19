@@ -215,7 +215,7 @@ exports.getMoreMessage = async ({ meetings_id, length }) => {
 
 // 메세지 보내기
 exports.sendMessage = async (data) => {
-  const [rows] = await db.query("insert messages set meetings_id = ?, created_at = ?, contents = ?, users_id = ?, users = ?, admin = ?, reply_id = ?, tag_id = ?", [
+  const [rows] = await db.query("insert messages set meetings_id = ?, created_at = ?, contents = ?, users_id = ?, users = ?, admin = ?, reply_id = ?, tag_id = ?, type = ?", [
     data.meetings_id,
     new Date(),
     data.contents,
@@ -224,6 +224,7 @@ exports.sendMessage = async (data) => {
     data.admin || 0,
     data.reply_id || 0,
     data.tag_id || 0,
+    data.type || "message",
   ]);
 
   return rows;

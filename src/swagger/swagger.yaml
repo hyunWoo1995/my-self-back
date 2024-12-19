@@ -264,6 +264,23 @@ paths:
                   type: string
                 type:
                   type: number
+  /moim/chat/image:
+    post:
+      tags:
+        - moim
+      summary: 채팅 이미지 업로드
+      description: 채팅 이미지 업로드
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: 파일 업로드
 
   /user/like/{receiver_id}:
     post:
