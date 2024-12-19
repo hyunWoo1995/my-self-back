@@ -14,6 +14,7 @@ exports.generateMeeting = async ({ name, region_code, maxMembers, users_id, desc
 
 // 모임 수정
 exports.editMeeting = async ({ meetings_id, ...updateFields }) => {
+  console.log("updateFieldsupdateFields", updateFields);
   if (!meetings_id) {
     throw new Error("meetings_id is required");
   }
@@ -23,8 +24,15 @@ exports.editMeeting = async ({ meetings_id, ...updateFields }) => {
     throw new Error("No fields to update");
   }
 
+  delete updateFields.logo;
+  delete updateFields.id;
+  delete updateFields.category1;
+  delete updateFields.category2;
+  delete updateFields.region_code;
+
   // 동적으로 SQL 쿼리 생성
   const keys = Object.keys(updateFields); // 업데이트할 컬럼 이름
+
   const values = Object.values(updateFields); // 업데이트할 컬럼 값
   const placeholders = keys.map((key) => `${key} = ?`).join(", "); // `column = ?` 형태로 변환
 

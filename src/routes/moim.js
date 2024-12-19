@@ -36,7 +36,7 @@ router.post("/getMoreMessage", moimController.getMoreMessage);
 router.get("/myMoim/:users_id", moimController.getMyMoim);
 router.get("/inviteList/:users_id", moimController.getInviteList);
 router.get("/like/:users_id", moimController.getLikeMoimList);
-
+router.post("/edit/:meetings_id", moimController.editMoim);
 router.post("/setMoimLogo", upload, async (req, res) => {
   try {
     await moimController.setMoimLogo(req, res);

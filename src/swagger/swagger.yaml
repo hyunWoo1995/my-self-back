@@ -232,6 +232,38 @@ paths:
                 length:
                   type: int
                   example: 20
+  /moim/edit:
+    post:
+      tags:
+        - moim
+      summary: 모임 수정
+      description: 모임 수정
+      parameters:
+        - name: meetings_id
+          in: query
+          required: true
+          schema:
+            type: int
+            example: 1
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: int
+                  example: 1
+                max_members:
+                  type: int
+                  example: 20
+                event_date:
+                  type: date
+                description:
+                  type: string
+                type:
+                  type: int
 
   /address/search:
     get:

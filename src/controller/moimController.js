@@ -167,3 +167,19 @@ exports.getLikeMoimList = async (req, res) => {
     res.sendError(err);
   }
 };
+
+// 모임 수정
+exports.editMoim = async (req, res) => {
+  try {
+    const { meetings_id } = req.params;
+    const editRes = await moimModel.editMeeting({ meetings_id, ...req.body });
+
+    if (editRes.affectedRows > 0) {
+      res.sendSuccess(200, "수정 성공");
+    } else {
+      res.sendError(500, "수정 실패");
+    }
+  } catch (err) {
+    res.sendError(err);
+  }
+};
