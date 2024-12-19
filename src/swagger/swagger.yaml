@@ -158,6 +158,53 @@ paths:
           schema:
             type: int
             example: 1
+  /moim/setMoimLogo:
+    post:
+      tags:
+        - moim
+      summary: 모임 로고 지정
+      description: 모임 로고 이미지 추가
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                logo:
+                  type: string
+                  format: binary
+                  description: 파일 업로드
+                meetings_id:
+                  type: int
+                  description: 모임 아이디
+      responses:
+        200:
+          description: 성공
+        400:
+          description: 실패 - 이메일 누락
+        500:
+          description: 서버 에러
+
+  /moim/inviteList/{users_id}/{meetings_id}:
+    get:
+      tags:
+        - moim
+      summary: 초대 조회
+      description: 나의 초대 목록을 조회한다.
+      parameters:
+        - name: users_id
+          in: query
+          required: true
+          schema:
+            type: int
+            example: 1
+        - name: meetings_id
+          in: query
+          required: true
+          schema:
+            type: int
+            example: 1
 
   /moim/getMoreMessage:
     post:

@@ -82,6 +82,18 @@ module.exports = async (io) => {
       socketService.handleGenerateInviteCode({ socket, getAsync, pubClient, setExAsync }, { meetings_id, region_code, users_id })
     );
 
+    socket.on("sendInviteCode", ({ region_code, users_id, meetings_id, invite_code }) =>
+      socketService.handleSendInviteCode({ getAsync, pubClient, setExAsync, socket, io, smembers }, { invite_code, meetings_id, region_code, users_id })
+    );
+
+    socket.on("inviteUser", ({ keyword, meetings_id, region_code, users_id }) =>
+      socketService.handleInviteUser({ getAsync, pubClient, setExAsync, socket }, { keyword, meetings_id, region_code, users_id })
+    );
+
+    socket.on("inviteAction", ({ receiver_id, code, meetings_id, sender_id, region_code }) =>
+      socketService.handleInviteAction({ getAsync, pubClient, setExAsync, socket, io, smembers }, { code, meetings_id, receiver_id, sender_id, region_code })
+    );
+
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)
     socket.on("disconnect", (e) => console.log("disconnect", e));
   });

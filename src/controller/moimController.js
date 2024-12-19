@@ -119,7 +119,7 @@ exports.setMoimLogo = async (req, res) => {
 
   console.log("ffff", file, file?.filename);
   try {
-    const editRes = await moimModel.editMeeting({ meetings_id, logo: file ? file.filename : "" });
+    const editRes = await moimModel.editMeeting({ meetings_id, logo: file ? `assets/images/moim/${file.filename}` : "" });
 
     res.sendSuccess("모임 수정 성공", { CODE: "EM000" });
   } catch (error) {
@@ -139,5 +139,18 @@ exports.getMyMoim = async (req, res) => {
     res.sendSuccess("", listRes);
   } catch (err) {
     res.sendError(500, "조회 실패");
+  }
+};
+
+// 초대 목록
+exports.getInviteList = async (req, res) => {
+  try {
+    const { users_id, meetings_id } = req.params;
+
+    const listRes = await moimModel.getInviteList({ users_id, meetings_id });
+
+    res.sendSuccess("모임 조회", listRes);
+  } catch (err) {
+    res.sendError("초대 목록 조회 실패");
   }
 };

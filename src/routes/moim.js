@@ -14,13 +14,28 @@ const storageEngine = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage: storageEngine }).single("image");
+// 파일 필터링 (이미지 파일만 허용)
+const fileFilter = (req, file, callback) => {
+  const allowedTypes = /jpeg|jpg|png/;
+  const extName = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimeType = allowedTypes.test(file.mimetype);
+
+  console.log("extName", extName);
+  if (extName && mimeType) {
+    callback(null, true);
+  } else {
+    callback(new Error("Only images are allowed!"), false);
+  }
+};
+
+const upload = multer({ storage: storageEngine, limits: { fileSize: 5 * 1024 * 1024 }, fileFilter }).single("image");
 
 // 카테고리 조회
 router.get("/category", moimController.getCategories);
 router.post("/getMoreMessage", moimController.getMoreMessage);
 router.get("/myMoim/:users_id", moimController.getMyMoim);
-// 라우터 설정
+router.get("/inviteList/:users_id/:meetings_id", moimController.getInviteList);
+
 router.post("/setMoimLogo", upload, async (req, res) => {
   try {
     await moimController.setMoimLogo(req, res);

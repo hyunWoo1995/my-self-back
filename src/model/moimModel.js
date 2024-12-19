@@ -81,7 +81,7 @@ exports.generalMoimEnter = async ({ meetings_id, users_id }) => {
 };
 
 // 모임 입장
-exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
+exports.enterMeeting = async ({ meetings_id, users_id, type, creator, isInvite }) => {
   const [[{ count }]] = await db.query("select count(id) as count from meetings_users where meetings_id = ? and status = 1", [meetings_id]);
 
   const [[{ max_members }]] = await db.query("select max_members from meetings where id =?", [meetings_id]);
@@ -119,7 +119,7 @@ exports.enterMeeting = async ({ meetings_id, users_id, type, creator }) => {
     const [rows] = await db.query("INSERT INTO meetings_users (meetings_id, users_id, status, last_active_time, created_at) VALUES (?, ?, ?, ?, ?)", [
       meetings_id,
       users_id,
-      type === 3 || creator ? 1 : 0,
+      type === 3 || creator || isInvite ? 1 : 0,
       new Date(),
       new Date(),
     ]);
@@ -291,5 +291,46 @@ exports.handleLeaveMeeting = async ({ users_id, meetings_id }) => {
     return { DATA: rows, CODE: "LM000" };
   } else {
     return;
+  }
+};
+
+// 초대 추가
+exports.handleInviteUser = async ({ users_id, meetings_id, receiver_id }) => {
+  try {
+    const [rows] = await db.query("insert into invite (sender_id, meetings_id, receiver_id,invite) values (?,?,?, ?)", [users_id, meetings_id, receiver_id, 0]);
+
+    if (rows.affectedRows > 0) {
+      return { CODE: "IU000" };
+    } else {
+      return { CODE: "IU001" };
+    }
+  } catch (err) {
+    console.error("invite user error", err);
+  }
+};
+
+// 초대 응답
+exports.handleInviteAction = async ({ receiver_id, sender_id, code, meetings_id }) => {
+  try {
+    const [rows] = await db.query("update invite set invite = ? where sender_id = ? and meetings_id = ? and receiver_id = ?", [code, sender_id, meetings_id, receiver_id]);
+
+    if (rows.affectedRows > 0) {
+      return { CODE: "IA000", message: "응답 성공" };
+    } else {
+      return { CODE: "IA001", message: "응답 실패" };
+    }
+  } catch (err) {
+    throw new Error(err);
+  }
+};
+
+// 초대 리스트 조회
+exports.getInviteList = async ({ users_id, meetings_id }) => {
+  try {
+    const [rows] = await db.query("select * from invite where receiver_id = ? and meetings_id = ?", [users_id, meetings_id]);
+
+    return rows;
+  } catch (err) {
+    throw new Error(err);
   }
 };

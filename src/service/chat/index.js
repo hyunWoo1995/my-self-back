@@ -301,9 +301,9 @@ exports.handleGenerateMeeting = async ({ socket, io, pubClient, getAsync, setExA
 };
 
 // 모임 입장 신청
-exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io, smembers }, { region_code, users_id, meetings_id, type, fcmToken }) => {
+exports.handleJoinMeeting = async ({ socket, pubClient, getAsync, setExAsync, io, smembers }, { region_code, users_id, meetings_id, type, fcmToken, isInvite }) => {
   try {
-    const enterRes = await moimModel.enterMeeting({ meetings_id, users_id, type });
+    const enterRes = await moimModel.enterMeeting({ meetings_id, users_id, type, isInvite });
 
     console.log("enterRes", enterRes);
 
@@ -650,14 +650,66 @@ exports.handleGenerateInviteCode = async ({ socket, pubClient, getAsync, setExAs
 };
 
 // 초대 수락
-exports.handleAcceptInvite = async ({ socket, pubClient, getAsync, setExAsync }, { users_id, region_code, meetings_id, invite_code }) => {
+exports.handleSendInviteCode = async ({ socket, pubClient, getAsync, setExAsync, smembers }, { users_id, region_code, meetings_id, invite_code }) => {
   const redisInviteCode = await getAsync(`inviteCode:${meetings_id}`);
 
   if (redisInviteCode !== invite_code) {
     pubClient.publish("message", JSON.stringify({ room: socket.id, event: "invite", data: { CODE: "AI001", message: "초대코드가 일치하지 않습니다." } }));
   } else {
+    await this.handleJoinMeeting({ getAsync, io, pubClient, setExAsync, smembers, socket }, { fcmToken, isInvite: true, meetings_id, region_code, type: undefined, users_id });
     // moimModel.enterMeeting({meetings_id, users_id})
     // 입장 처리
+
+    pubClient.publish("message", JSON.stringify({ room: socket.id, event: "invite", data: { CODE: "AI000", message: "초대 수락하여 방에 입장하였습니다." } }));
+  }
+};
+
+// 유저 초대
+exports.handleInviteUser = async ({ socket, pubClient, getAsync, setExAsync }, { keyword, meetings_id, region_code, users_id }) => {
+  const isEmail = keyword.indexOf("@") > -1 ? true : false;
+
+  const existingUser = isEmail ? await userModel.findByEmail(keyword) : await userModel.findByNickname(keyword);
+
+  if (existingUser) {
+    const res = await moimModel.handleInviteUser({ users_id, meetings_id, receiver_id });
+
+    if (res.CODE === "IU000") {
+      console.log("초대 성공");
+    } else {
+      console.log("초대 실패");
+    }
+  } else {
+    console.log("유저 없음");
+  }
+  return pubClient.publish("message", JSON.stringify({ room: socket.id, event: "invite", data: { CODE: "IS000", message: "초대장을 보냈습니다." } }));
+};
+
+// 유저 응답
+exports.handleInviteAction = async ({ socket, pubClient, getAsync, setExAsync, smembers, io }, { receiver_id, sender_id, code, meetings_id, region_code }) => {
+  try {
+    const res = await moimModel.handleInviteAction({ receiver_id, code, meetings_id, sender_id });
+
+    if (res.CODE !== "IA000") {
+      throw new Error("응답 실패");
+    }
+
+    if (code === 1) {
+      this.handleJoinMeeting({ socket, getAsync, io, pubClient, setExAsync, smembers }, { isInvite: true, meetings_id, region_code, users_id: receiver_id });
+    }
+
+    pubClient.publish(
+      "message",
+      JSON.stringify({
+        room: socket.id,
+        event: "invite",
+        data: {
+          CODE: "IA000",
+          message: "초대에 응답하였습니다.",
+        },
+      })
+    );
+  } catch (err) {
+    throw new Error("응답 실패");
   }
 };
 
