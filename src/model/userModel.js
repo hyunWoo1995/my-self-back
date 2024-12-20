@@ -192,6 +192,82 @@ WHERE u.id = ?;
       return rows;
     }
   },
+
+  async handleAddFriend({ receiver_id, sender_id }) {
+    try {
+      const query = `
+    SELECT * 
+    FROM friend_history 
+    WHERE (receiver_id = ? AND sender_id = ?)
+       OR (receiver_id = ? AND sender_id = ?)
+  `;
+
+      const params = [receiver_id, sender_id, sender_id, receiver_id];
+
+      const [existingHistory] = await db.query(query, params);
+
+      console.log("existingHistory", existingHistory);
+
+      if (existingHistory.length > 0 && existingHistory[0].status !== 2) {
+        return { CODE: "AF001", message: "동일한 요청이 존재하거나 이미 등록된 친구입니다." };
+      }
+
+      const [rows] = await db.query("insert into friend_history (receiver_id, sender_id, status) values (?,?, 0)", [receiver_id, sender_id]);
+
+      if (rows.affectedRows > 0) {
+        return { CODE: "AF000", message: "친구 추가 성공" };
+      } else {
+        return { CODE: "AF001", message: "친구 추가 실패" };
+      }
+    } catch (err) {
+      throw new Error("친구 추가 에러");
+    }
+  },
+
+  async handleReplyFriend({ receiver_id, sender_id, code }) {
+    try {
+      const query = `
+    SELECT * 
+    FROM friend_history 
+    WHERE (receiver_id = ? AND sender_id = ?)
+       OR (receiver_id = ? AND sender_id = ?)
+  `;
+
+      const params = [receiver_id, sender_id, sender_id, receiver_id];
+
+      const [existingHistory] = await db.query(query, params);
+
+      console.log("existingHistory", existingHistory);
+
+      if (existingHistory.length === 0 || existingHistory[0].status !== 0) {
+        return { CODE: "RF001", message: "요청이 존재하지 않거나 이미 처리된 요청입니다." };
+      }
+
+      const { receiver_id: data_receiver_id, sender_id: data_sender_id } = existingHistory[0];
+
+      console.log("data_receiver_id", data_receiver_id);
+
+      const [rows] = await db.query("update friend_history set status = ?, updated_at = ? where receiver_id = ? and sender_id = ?", [code, new Date(), data_receiver_id, data_sender_id]);
+
+      if (rows.affectedRows > 0) {
+        return { CODE: "RF000", message: "친구 요청 응답에 성공했습니다." };
+      } else {
+        return { CODE: "RF001", message: "친구 요청 응답에 실패했습니다." };
+      }
+    } catch (err) {
+      throw new Error("친구 응답 에러");
+    }
+  },
+
+  async getFriendHistory({ users_id }) {
+    try {
+      const [rows] = await db.query("select * from friend_history where status = 0 and (receiver_id = ?) or (sender_id = ?)", [users_id, users_id]);
+
+      return rows;
+    } catch (err) {
+      throw new Error(`친구 조회 실패: ${err}`);
+    }
+  },
 };
 
 module.exports = User;

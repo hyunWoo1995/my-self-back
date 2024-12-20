@@ -10,6 +10,13 @@ const moment = require("moment");
 let typingUsers = [];
 const typingTimers = {}; // To store timers for each user
 
+exports.setRegisterUserId = async ({ socket, pubClient, getAsync, setExAsync }, { users_id }) => {
+  console.log(`User ${users_id} connected with socket ${socket.id}`);
+  await setExAsync(`socket:${users_id}`, 3600, socket.id);
+
+  socket.userId = users_id;
+};
+
 // 모임 입장
 exports.handleEnterMeeting = async ({ socket, pubClient, getAsync, setExAsync, io, smembers, getMoimDetails }, { region_code, meetings_id, users_id, type, fcmToken, afterBlur }) => {
   console.log("afterBlurafterBlur", afterBlur ? "true" : "false");
@@ -736,6 +743,82 @@ exports.handleInviteReply = async ({ socket, pubClient, getAsync, setExAsync, sm
     );
   } catch (err) {
     throw new Error("응답 실패");
+  }
+};
+
+// 친구 추가
+exports.handleAddFriend = async ({ socket, getAsync, pubClient, setExAsync, io }, { receiver_id, sender_id }) => {
+  const res = await userModel.handleAddFriend({ receiver_id, sender_id });
+
+  console.log("res", res);
+
+  if (res.CODE === "AF000") {
+    pubClient.publish(
+      "message",
+      JSON.stringify({
+        room: receiver_id,
+        event: "friend",
+        data: {
+          message: "친구 추가 요청이 들어왔습니다.",
+          CODE: "FR000",
+        },
+      })
+    );
+  }
+
+  return pubClient.publish(
+    "message",
+    JSON.stringify({
+      room: socket.id,
+      event: "friend",
+      data: {
+        message: res.CODE === "AF000" ? "친구 추가 요청에 성공했습니다." : "친구 추가 요청에 실패했습니다.",
+        CODE: res.CODE,
+        DATA: {
+          sender_id,
+          receiver_id,
+        },
+      },
+    })
+  );
+};
+
+exports.handleReplyFriend = async ({ socket, getAsync, pubClient, setExAsync }, { receiver_id, sender_id, code }) => {
+  try {
+    const res = await userModel.handleReplyFriend({ receiver_id, code, sender_id });
+
+    if (res.CODE === "RF000") {
+      pubClient.publish(
+        "message",
+        JSON.stringify({
+          room: sender_id,
+          event: "friend",
+          data: {
+            message: "친구 추가 요청 응답이 왔습니다",
+            CODE: "RF000",
+          },
+        })
+      );
+    }
+
+    return pubClient.publish(
+      "message",
+      JSON.stringify({
+        room: socket.id,
+        event: "friend",
+        data: {
+          message: res.message,
+          CODE: res.CODE,
+          DATA: {
+            sender_id,
+            receiver_id,
+          },
+        },
+      })
+    );
+  } catch (err) {
+    console.error(err);
+    throw new Error(err);
   }
 };
 

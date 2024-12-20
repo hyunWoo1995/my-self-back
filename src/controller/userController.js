@@ -46,6 +46,18 @@ const userController = {
       res.sendError(500, err);
     }
   },
+
+  async getFriendHistory(req, res) {
+    try {
+      const { users_id } = req.params;
+
+      const listRes = await userModel.getFriendHistory({ users_id });
+
+      res.sendSuccess("친구 조회", listRes);
+    } catch (err) {
+      res.sendError(err);
+    }
+  },
 };
 
 module.exports = userController;

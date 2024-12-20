@@ -20,6 +20,9 @@ module.exports = async (io) => {
   io.on("connection", (socket) => {
     socket.emit("message", socket.id);
 
+    // 유저 id 등록
+    socket.on("register", ({ users_id }) => socketService.setRegisterUserId({ socket, getAsync, pubClient, setExAsync }, { users_id }));
+
     // 나의 모임 목록
     socket.on("getMyList", (data) => socketService.getMyList({ socket, pubClient, getAsync, setExAsync }, data));
 
@@ -94,7 +97,16 @@ module.exports = async (io) => {
       socketService.handleInviteReply({ getAsync, pubClient, setExAsync, socket, io, smembers }, { code, meetings_id, receiver_id, sender_id, region_code });
     });
 
+    socket.on("addFriend", ({ receiver_id, sender_id }) => socketService.handleAddFriend({ getAsync, pubClient, setExAsync, socket, io }, { receiver_id, sender_id }));
+
+    socket.on("replyFriend", ({ receiver_id, sender_id, code }) => socketService.handleReplyFriend({ getAsync, pubClient, setExAsync, socket }, { receiver_id, sender_id, code }));
+
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)
-    socket.on("disconnect", (e) => console.log("disconnect", e));
+    socket.on("disconnect", (e) => {
+      console.log("disconnect", socket.userId, e);
+      if (socket.userId) {
+        pubClient.del(`socket:${socket.userId}`);
+      }
+    });
   });
 };
