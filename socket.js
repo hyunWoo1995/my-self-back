@@ -101,6 +101,10 @@ module.exports = async (io) => {
 
     socket.on("replyFriend", ({ receiver_id, sender_id, code }) => socketService.handleReplyFriend({ getAsync, pubClient, setExAsync, socket }, { receiver_id, sender_id, code }));
 
+    socket.on("kickOut", ({ users_id, meetings_id, description, receiver_id, region_code }) =>
+      socketService.handleKickOut({ getAsync, pubClient, setExAsync, socket, smembers }, { description, meetings_id, users_id, region_code, receiver_id })
+    );
+
     // 클라이언트가 연결 해제 시 처리 (Handle client disconnect)
     socket.on("disconnect", (e) => {
       console.log("disconnect", socket.userId, e);

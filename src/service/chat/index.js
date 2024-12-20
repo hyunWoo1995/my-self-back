@@ -822,6 +822,77 @@ exports.handleReplyFriend = async ({ socket, getAsync, pubClient, setExAsync }, 
   }
 };
 
+exports.handleKickOut = async ({ socket, getAsync, pubClient, setExAsync, smembers }, { users_id, meetings_id, description, receiver_id, region_code }) => {
+  // 유저 아이디와 방 만든 사람 아이디 비교 (만든 사람만 강퇴할 수 있음)
+  const moimDataCache = await smembers(`moimData:${meetings_id}`);
+
+  console.log("moimDataCache", users_id, meetings_id, description, receiver_id, region_code, moimDataCache);
+
+  const moimData = moimDataCache.length > 0 ? JSON.parse(moimDataCache) : await moimModel.getMeetingData({ meetings_id });
+
+  console.log(",m,mm", moimData);
+
+  if (users_id !== moimData.creator_id) {
+    return pubClient.publish(
+      "message",
+      JSON.stringify({
+        room: socket.id,
+        event: "kickOutRes",
+        data: {
+          CODE: "KO001",
+          message: "방 만든 사람만 강퇴할 수 있습니다.",
+        },
+      })
+    );
+  }
+
+  // 모임유저 테이블에서 수정
+  const kickOutRes = await moimModel.handleKickOut({ description, meetings_id, receiver_id, users_id });
+
+  if (kickOutRes.CODE === "KO000") {
+    const [meetingData, meetingList] = await Promise.all([moimModel.getMeetingData({ meetings_id }), moimModel.getMeetingList({ region_code })]);
+
+    // 바뀐 것 레디스에 저장
+    await pubClient.sadd(`moimData:${meetings_id}`, JSON.stringify(meetingData));
+    await setExAsync(`meetingList:${region_code}`, 3600, JSON.stringify(meetingList));
+
+    // 강퇴한 사람에게 통보
+
+    pubClient.publish(
+      "message",
+      JSON.stringify({
+        room: socket.id,
+        event: "kickOutRes",
+        data: {
+          CODE: kickOutRes.CODE,
+          message: kickOutRes.message,
+        },
+      })
+    );
+
+    // 강퇴 당한 사람에게 통보
+
+    const receiverSocketId = await getAsync(`socket:${receiver_id}`);
+
+    console.log("receiverSocketId", receiverSocketId);
+
+    pubClient.publish(
+      "message",
+      JSON.stringify({
+        room: receiverSocketId,
+        event: "kickOutMeeting",
+        data: {
+          CODE: "KM000",
+          meetings_id,
+          users_id,
+          receiver_id,
+          description,
+        },
+      })
+    );
+  }
+};
+
 const handleDecryptMessages = (data) => {
   return data.map((v) => {
     if (v.reply_contents) {

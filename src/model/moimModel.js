@@ -366,3 +366,18 @@ exports.getLikeMoimList = async ({ users_id }) => {
     throw new Error("getLikeMoimList error");
   }
 };
+
+// 강퇴
+exports.handleKickOut = async ({ users_id, meetings_id, receiver_id, description }) => {
+  try {
+    const [rows] = await db.query("update meetings_users set status = ?, description = ?, updated_at = ? where meetings_id = ? and users_id = ?", [3, description, new Date(), meetings_id, users_id]);
+
+    if (rows.affectedRows > 0) {
+      return { CODE: "KO000", message: "강퇴 성공" };
+    } else {
+      return { CODE: "KO001", message: "강퇴 실패" };
+    }
+  } catch (err) {
+    throw new Error(`kickOut error: ${err}`);
+  }
+};
