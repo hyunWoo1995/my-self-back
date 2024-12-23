@@ -24,6 +24,8 @@ exports.getMoreMessage = async (req, res) => {
 
     const result = await moimModel.getMoreMessage({ meetings_id, length });
 
+    console.log("result", result);
+
     const meetingsUsers = await moimModel.getMeetingsUsers({ meetings_id });
 
     const userJoinDate = new Date(meetingsUsers.find((v) => v.users_id === userId).updated_at) || new Date(meetingsUsers.find((v) => v.users_id === userId).created_at);
@@ -33,7 +35,7 @@ exports.getMoreMessage = async (req, res) => {
     res.status(200).json({
       DATA: {
         list: decryptMessages.filter((v) => moment(v.created_at).isSameOrAfter(userJoinDate)),
-        end: Math.ceil(decryptMessages.filter((v) => moment(v.created_at).isSameOrAfter(userJoinDate)).length / 20) < 2,
+        end: Math.floor(decryptMessages.filter((v) => moment(v.created_at).isSameOrAfter(userJoinDate)).length / 20) < 1,
       },
     });
   } catch (err) {
